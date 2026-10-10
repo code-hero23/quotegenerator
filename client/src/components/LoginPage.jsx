@@ -128,32 +128,41 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             {/* Role Demo Credential Presets */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
-              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Quick Sign In Presets</div>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2.5">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <span>Select Account / Quick Fill</span>
+                <span className="text-[10px] lowercase font-normal text-slate-400">click auto-fill</span>
+              </div>
               
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5 text-slate-700">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="font-semibold">Administrator:</span>
-                  <code className="text-amber-800 font-mono">admin</code>
+              {/* Admin */}
+              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <div className="flex items-center space-x-2 text-slate-700">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-slate-800">Admin <span className="font-mono text-slate-500 font-normal text-[11px]">(admin / admin)</span></div>
+                    <div className="text-[10px] text-slate-400">Full access & all quotes</div>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => {
                     setUsername('admin');
-                    setPassword('admin123');
+                    setPassword('admin');
                   }}
-                  className="text-amber-600 hover:text-amber-800 font-semibold text-[11px] underline"
+                  className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-semibold text-[11px] rounded-md transition-colors"
                 >
                   Auto-fill
                 </button>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
-                <div className="flex items-center space-x-1.5 text-slate-700">
-                  <Compass className="w-3.5 h-3.5 text-sky-600" />
-                  <span className="font-semibold">Feasibility Architect:</span>
-                  <code className="text-sky-800 font-mono">abishek</code>
+              {/* Architect Abishek */}
+              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors border-t border-slate-200/60 pt-2">
+                <div className="flex items-center space-x-2 text-slate-700">
+                  <Compass className="w-4 h-4 text-sky-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-slate-800">Abishek <span className="font-mono text-slate-500 font-normal text-[11px]">(abishek / arch123)</span></div>
+                    <div className="text-[10px] text-slate-400">Feasibility Architect</div>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -161,7 +170,28 @@ export default function LoginPage({ onLogin }) {
                     setUsername('abishek');
                     setPassword('arch123');
                   }}
-                  className="text-sky-600 hover:text-sky-800 font-semibold text-[11px] underline"
+                  className="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 font-semibold text-[11px] rounded-md transition-colors"
+                >
+                  Auto-fill
+                </button>
+              </div>
+
+              {/* Architect Aravindan */}
+              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors border-t border-slate-200/60 pt-2">
+                <div className="flex items-center space-x-2 text-slate-700">
+                  <Compass className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="font-semibold text-slate-800">Aravindan <span className="font-mono text-slate-500 font-normal text-[11px]">(aravindan / arch123)</span></div>
+                    <div className="text-[10px] text-slate-400">Feasibility Architect</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('aravindan');
+                    setPassword('arch123');
+                  }}
+                  className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 font-semibold text-[11px] rounded-md transition-colors"
                 >
                   Auto-fill
                 </button>

@@ -6,14 +6,19 @@ const dbService = require('../services/db');
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+    console.log(`[AUTH] Login attempt for username="${username}"`);
+
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'Username and password are required.' });
     }
 
     const user = await dbService.authenticateUser(username, password);
     if (!user) {
+      console.warn(`[AUTH] Login FAILED for username="${username}"`);
       return res.status(401).json({ success: false, error: 'Invalid username or password.' });
     }
+
+    console.log(`[AUTH] Login SUCCESS: username="${username}", role="${user.role}", name="${user.name}"`);
 
     res.json({
       success: true,

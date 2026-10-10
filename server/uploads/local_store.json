@@ -121,6 +121,16 @@
       "username": "abishek",
       "password": "arch123",
       "title": "Feasibility Architect"
+    },
+    {
+      "id": "user-arch-aravindan",
+      "username": "aravindan",
+      "password": "arch123",
+      "name": "Aravindan",
+      "contactNumber": "7418414780",
+      "email": "aravind@cookscape.in",
+      "role": "architect",
+      "title": "Feasibility Architect"
     }
   ],
   "clients": [

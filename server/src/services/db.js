@@ -1,14 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-// Initial seed dataset (mirrors Master-Template.pptx)
+// Initial seed dataset without pricing
 const defaultVariants = [
   {
     id: 'var-surabhi-ll-elite',
     name: 'SURABHI - LL ELITE',
     category: 'Premium Marine Interior',
     description: 'High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.',
-    price: 345000,
     specs: {
       carcassMaterial: 'Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R',
       carcassFinish: 'Frosty White',
@@ -25,7 +24,6 @@ const defaultVariants = [
     name: 'CAPRICOAST MATTE',
     category: 'Ultra Matte Contemporary',
     description: 'Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.',
-    price: 395000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White / Grey Linum',
@@ -42,7 +40,6 @@ const defaultVariants = [
     name: 'CAPRICOST GLOSSY',
     category: 'High Gloss Elegance',
     description: 'High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.',
-    price: 430000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White',
@@ -59,7 +56,6 @@ const defaultVariants = [
     name: 'ELEGANT SURABHI',
     category: 'Architectural Grade Luxury',
     description: 'BWP 710 Gurjan Ply with super matte 1mm branded laminate and Grade 1 soft-closing hardware.',
-    price: 520000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade with both side Laminate',
       carcassFinish: 'Premium Frosty Linum',
@@ -76,7 +72,6 @@ const defaultVariants = [
     name: '4X TUFF GLOSS',
     category: 'Scratch & Stain Proof Signature',
     description: 'Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.',
-    price: 580000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White Deluxe',
@@ -118,6 +113,26 @@ function loadLocalStore() {
     try {
       const parsed = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
       if (parsed && Array.isArray(parsed.variants)) {
+        // Strip prices from all variants if present
+        let updated = false;
+        parsed.variants.forEach(v => {
+          if ('price' in v) {
+            delete v.price;
+            updated = true;
+          }
+        });
+        // Ensure each quotation has architect field populated
+        if (Array.isArray(parsed.quotations)) {
+          parsed.quotations.forEach(q => {
+            if (!q.architect) {
+              q.architect = q.user?.name || q.repInfo?.name || 'Mr. Abishek';
+              updated = true;
+            }
+          });
+        }
+        if (updated) {
+          saveLocalStore(parsed);
+        }
         return parsed;
       }
     } catch (e) {
@@ -199,13 +214,16 @@ const dbService = {
     const store = loadLocalStore();
     if (!store.quotations) store.quotations = [];
 
+    const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Mr. Abishek';
+
     const newQuote = {
       id: quoteData.id || `quote-${Date.now()}`,
       ...quoteData,
+      architect: architectName,
       createdAt: new Date(),
       updatedAt: new Date(),
       client: (store.clients || []).find(c => c.id === quoteData.clientId) || { name: 'Client' },
-      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: 'Sales Rep' }
+      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: architectName, role: 'Design Architect' }
     };
 
     store.quotations.unshift(newQuote);

@@ -68,32 +68,17 @@ router.get('/view/:filename', async (req, res) => {
         return false;
       });
 
-      // 1. Try to convert from matching PPTX file
+      // 1. Convert directly from matching PPTX file
       let matchingPptx = path.resolve(generatedDir, targetFilename.replace(/\.pdf$/i, '.pptx'));
       if (!fs.existsSync(matchingPptx) && matchingQuote?.filePath && fs.existsSync(matchingQuote.filePath)) {
         matchingPptx = matchingQuote.filePath;
       }
 
       if (fs.existsSync(matchingPptx)) {
-        const comRes = await convertPptxToPdf(matchingPptx, filePath);
-        if (comRes.success) {
-          console.log(`✅ Converted PPTX to PDF on-the-fly for view: ${targetFilename}`);
+        const convRes = await convertPptxToPdf(matchingPptx, filePath);
+        if (convRes.success) {
+          console.log(`✅ Converted PPTX to PDF directly for view: ${targetFilename}`);
         }
-      }
-
-      // 2. Fallback to vector pdfkit generator if COM conversion failed or PPTX missing
-      if (!fs.existsSync(filePath) && matchingQuote) {
-        const variants = Array.isArray(matchingQuote.selectedVariants)
-          ? matchingQuote.selectedVariants
-          : JSON.parse(matchingQuote.selectedVariants || '[]');
-        
-        await pdfEngine.generate({
-          clientInfo: matchingQuote.client || {},
-          repInfo: matchingQuote.user || {},
-          selectedVariants: variants,
-          quotationNumber: matchingQuote.quotationNumber || 'QT-000000',
-          outputPath: filePath
-        });
       }
     }
 
@@ -142,23 +127,12 @@ router.get('/download/:filename', async (req, res) => {
 
         const genPdfPath = path.resolve(generatedDir, targetFilename);
         
-        // Try PowerPoint COM conversion first if matching PPTX exists
+        // Convert matching PPTX directly to PDF
         if (matchingQuote.filePath && fs.existsSync(matchingQuote.filePath)) {
-          const comRes = await convertPptxToPdf(matchingQuote.filePath, genPdfPath);
-          if (comRes.success) {
+          const convRes = await convertPptxToPdf(matchingQuote.filePath, genPdfPath);
+          if (convRes.success) {
             filePath = genPdfPath;
           }
-        }
-
-        if (!fs.existsSync(filePath)) {
-          await pdfEngine.generate({
-            clientInfo: matchingQuote.client || {},
-            repInfo: matchingQuote.user || {},
-            selectedVariants: variants,
-            quotationNumber: matchingQuote.quotationNumber || 'QT-000000',
-            outputPath: genPdfPath
-          });
-          filePath = genPdfPath;
         }
       }
     }
@@ -308,26 +282,18 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       outputPath: pptxOutputPath
     });
 
-    // 2. Generate PDF Document: First attempt PowerPoint COM conversion
+    // 2. Generate PDF Document: Export the generated PPTX directly to PDF
     let pdfResult = { filePath: pdfOutputPath, fileSize: 0 };
     const pptToPdfRes = await convertPptxToPdf(pptxOutputPath, pdfOutputPath);
     
     if (pptToPdfRes.success) {
       pdfResult.fileSize = pptToPdfRes.fileSize;
     } else {
-      // Fallback to pdfkit vector document generator
-      pdfResult = await pdfEngine.generate({
-        clientInfo,
-        repInfo,
-        selectedVariants: selectedVariantDetails,
-        quotationNumber: quoteNo,
-        snips,
-        outputPath: pdfOutputPath
-      });
+      console.warn(`⚠️ Direct PPTX export to PDF notice: ${pptToPdfRes.error}`);
     }
 
     const duration = Date.now() - startTime;
-    console.log(`✅ PPTX & PDF generated in ${duration}ms! PPTX: ${(pptxResult.fileSize / (1024*1024)).toFixed(1)}MB, PDF: ${(pdfResult.fileSize / 1024).toFixed(1)}KB`);
+    console.log(`✅ Presentation & PDF exported in ${duration}ms! PPTX: ${(pptxResult.fileSize / (1024*1024)).toFixed(1)}MB, PDF: ${(pdfResult.fileSize / 1024).toFixed(1)}KB`);
 
     // Upsert Client in database
     const savedClient = await dbService.upsertClient({
@@ -337,8 +303,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       email: clientInfo.email || null
     });
 
-    const users = await dbService.getUsers();
-    const repUser = users.find(u => u.name === repInfo.name) || users[0] || { id: 'user-sales-rep-1' };
+    const architectName = repInfo.name || 'Mr. Abishek';
 
     const pptxDownloadUrl = `/api/quotations/download/${pptxFileName}`;
     const pdfDownloadUrl = `/api/quotations/download/${pdfFileName}`;
@@ -347,7 +312,9 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     const savedQuote = await dbService.createQuotation({
       quotationNumber: quoteNo,
       clientId: savedClient.id,
-      userId: repUser.id,
+      architect: architectName,
+      repInfo,
+      clientInfo,
       date: new Date(),
       selectedVariants: selectedVariantDetails,
       filePath: pptxOutputPath,

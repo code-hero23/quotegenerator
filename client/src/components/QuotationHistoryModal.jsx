@@ -1,27 +1,44 @@
 import React, { useState } from 'react';
 import { 
   X, History, Download, Calendar, Search, 
-  MapPin, Phone, Check, Eye, FileText 
+  MapPin, Phone, Check, Eye, FileText, UserCheck, User, Layers 
 } from 'lucide-react';
 
 export default function QuotationHistoryModal({ isOpen, onClose, quotations = [], onPreviewPdf }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [selectedArchitect, setSelectedArchitect] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
 
   if (!isOpen) return null;
 
+  // Extract all unique architects
+  const architectsList = Array.from(
+    new Set(
+      quotations
+        .map(q => q.architect || q.repInfo?.name || q.user?.name || 'Mr. Abishek')
+        .filter(Boolean)
+    )
+  );
+
   // Filter & Search Logic
   const filteredQuotations = quotations.filter((q) => {
     const client = q.client || {};
+    const architect = q.architect || q.repInfo?.name || q.user?.name || 'Mr. Abishek';
     const query = searchQuery.toLowerCase();
+
     const matchesSearch = 
       (q.quotationNumber && q.quotationNumber.toLowerCase().includes(query)) ||
       (client.name && client.name.toLowerCase().includes(query)) ||
       (client.location && client.location.toLowerCase().includes(query)) ||
-      (client.contactNumber && client.contactNumber.includes(query));
+      (client.contactNumber && client.contactNumber.includes(query)) ||
+      (architect && architect.toLowerCase().includes(query));
 
     if (!matchesSearch) return false;
+
+    if (selectedArchitect !== 'all' && architect.toLowerCase() !== selectedArchitect.toLowerCase()) {
+      return false;
+    }
 
     if (filterType === 'recent') {
       const isToday = new Date(q.createdAt).toDateString() === new Date().toDateString();
@@ -30,16 +47,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
     return true;
   });
 
-  // Calculate Metrics
   const totalCount = quotations.length;
-  let totalPipelineValue = 0;
-  quotations.forEach(q => {
-    const variants = Array.isArray(q.selectedVariants) 
-      ? q.selectedVariants 
-      : (typeof q.selectedVariants === 'string' ? JSON.parse(q.selectedVariants || '[]') : []);
-    const sum = variants.reduce((s, v) => s + (v.price || 0), 0);
-    totalPipelineValue += sum;
-  });
 
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text);
@@ -64,7 +72,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                   {totalCount} Generated
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">View live PDFs and download presentations (.pptx) or documents (.pdf)</p>
+              <p className="text-xs text-slate-500 font-medium">Track architect-generated presentations and download exported presentations (.pptx) or documents (.pdf)</p>
             </div>
           </div>
 
@@ -83,25 +91,25 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
             <span className="text-lg font-bold text-slate-900 font-['Outfit']">{totalCount} Quotes</span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-            <span className="text-slate-500 block mb-0.5 font-medium">Quoted Pipeline Value</span>
+            <span className="text-slate-500 block mb-0.5 font-medium">Active Architects</span>
             <span className="text-lg font-bold text-amber-800 font-['Outfit']">
-              {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(totalPipelineValue)}
+              {architectsList.length} {architectsList.length === 1 ? 'Architect' : 'Architects'}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
             <span className="text-slate-500 block mb-0.5 font-medium">Available Formats</span>
             <span className="text-emerald-700 font-bold flex items-center gap-1.5 mt-1">
-              <Check className="w-4 h-4" /> PPTX + Live PDF Preview
+              <Check className="w-4 h-4" /> PPTX + Direct Export PDF
             </span>
           </div>
         </div>
 
         {/* Search & Filter Controls */}
         <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-72">
             <input
               type="text"
-              placeholder="Search by client, location, or QT-number..."
+              placeholder="Search client, architect, location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-amber-500"
@@ -109,7 +117,21 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+          <div className="flex flex-wrap items-center space-x-2 w-full sm:w-auto justify-end gap-2">
+            {/* Architect Dropdown Filter */}
+            {architectsList.length > 0 && (
+              <select
+                value={selectedArchitect}
+                onChange={(e) => setSelectedArchitect(e.target.value)}
+                className="bg-slate-50 border border-slate-300 text-slate-800 text-xs rounded-lg px-2.5 py-1.5 font-semibold focus:outline-none focus:border-amber-500"
+              >
+                <option value="all">All Architects ({architectsList.length})</option>
+                {architectsList.map((arch, idx) => (
+                  <option key={idx} value={arch}>{arch}</option>
+                ))}
+              </select>
+            )}
+
             <button
               onClick={() => setFilterType('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
@@ -140,22 +162,16 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
               <FileText className="w-14 h-14 text-slate-400 mx-auto" />
               <h4 className="text-base font-semibold text-slate-700">No matching quotation records found</h4>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {searchQuery ? 'Try clearing your search query.' : 'Generate your first quotation presentation using the 4-step wizard.'}
+                {searchQuery ? 'Try clearing your search query or filters.' : 'Generate your first quotation presentation using the 4-step wizard.'}
               </p>
             </div>
           ) : (
             filteredQuotations.map((quote) => {
               const client = quote.client || {};
+              const architect = quote.architect || quote.repInfo?.name || quote.user?.name || 'Mr. Abishek';
               const variants = Array.isArray(quote.selectedVariants) 
                 ? quote.selectedVariants 
                 : (typeof quote.selectedVariants === 'string' ? JSON.parse(quote.selectedVariants || '[]') : []);
-
-              const quoteTotal = variants.reduce((s, v) => s + (v.price || 0), 0);
-              const formattedPrice = new Intl.NumberFormat('en-IN', { 
-                style: 'currency', 
-                currency: 'INR', 
-                maximumFractionDigits: 0 
-              }).format(quoteTotal);
 
               const pptxUrl = quote.downloadUrl || null;
               const pdfUrl = quote.pdfDownloadUrl || (quote.downloadUrl ? quote.downloadUrl.replace(/\.pptx$/i, '.pdf') : null);
@@ -167,19 +183,27 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                   className="p-5 rounded-xl bg-white border border-slate-200 hover:border-amber-400 transition-all flex flex-col lg:flex-row lg:items-center justify-between gap-5 group shadow-xs"
                 >
                   {/* Left Column: Details */}
-                  <div className="space-y-2 flex-1">
+                  <div className="space-y-2.5 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs font-bold px-2.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
                         {quote.quotationNumber}
                       </span>
+
+                      {/* Prominent Architect Badge */}
+                      <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200">
+                        <UserCheck className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Architect: {architect}</span>
+                      </span>
+
                       <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                         <Calendar className="w-3 h-3 text-slate-400" />
                         {new Date(quote.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </span>
+
                       <button
                         type="button"
                         onClick={() => handleCopy(quote.id, quote.quotationNumber)}
-                        className="text-[10px] text-slate-400 hover:text-amber-700 font-mono transition-colors font-medium"
+                        className="text-[10px] text-slate-400 hover:text-amber-700 font-mono transition-colors font-medium ml-auto sm:ml-0"
                       >
                         {copiedId === quote.id ? '✓ Copied' : 'Copy Ref'}
                       </button>
@@ -207,11 +231,8 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-sm font-bold text-amber-800 font-['Outfit'] block">
-                          {formattedPrice}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-medium">
-                          {variants.length} Variant{variants.length > 1 ? 's' : ''}
+                        <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-800 font-bold block font-mono">
+                          {variants.length} {variants.length === 1 ? 'Variant' : 'Variants'}
                         </span>
                       </div>
                     </div>
@@ -219,7 +240,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                     {/* Variant Badges */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {variants.map((v, i) => (
-                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                        <span key={i} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 font-medium">
                           {v.name || v}
                         </span>
                       ))}
@@ -232,7 +253,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                     {pdfViewUrl && (
                       <button
                         type="button"
-                        onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${client.name || 'Client'} Quotation PDF`)}
+                        onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${client.name || 'Client'} Presentation PDF`)}
                         className="px-3.5 py-2 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5 text-cyan-600" />

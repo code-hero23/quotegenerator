@@ -25,11 +25,6 @@ export default function StepVariantSelection({
     setSelectedVariantIds([]);
   };
 
-  const formatPrice = (price) => {
-    if (!price) return 'Custom Quote';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
-  };
-
   const isValid = selectedVariantIds.length > 0;
 
   return (
@@ -110,12 +105,12 @@ export default function StepVariantSelection({
                   </div>
                 </div>
 
-                {/* Price & Slide Mapping Badge */}
+                {/* Specifications & Slide Mapping Badge */}
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
-                  <span className="text-xl font-extrabold text-amber-700 font-['Outfit']">
-                    {formatPrice(variant.price)}
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-900 font-bold">
+                    {variant.specs?.warranty || 'Architectural Specification'}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-600 font-mono font-medium">
+                  <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-mono font-bold">
                     Slides: {slideIndices.join(', ')}
                   </span>
                 </div>

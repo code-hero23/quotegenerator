@@ -34,13 +34,6 @@ export default function StepReviewGenerate({
   });
   const estimatedOutputSlides = totalMasterSlides - subtractedSlidesCount;
 
-  const totalPrice = selectedVariants.reduce((sum, v) => sum + (v.price || 0), 0);
-  const formattedTotal = new Intl.NumberFormat('en-IN', { 
-    style: 'currency', 
-    currency: 'INR', 
-    maximumFractionDigits: 0 
-  }).format(totalPrice);
-
   const handleStartGeneration = async () => {
     const res = await onGenerate(engineType);
     if (res && res.success) {
@@ -121,11 +114,11 @@ export default function StepReviewGenerate({
                   <p className="text-[11px] text-slate-500">{v.category}</p>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs font-bold text-amber-800 font-mono">
-                    {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v.price || 0)}
+                  <span className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                    {v.specs?.warranty || 'Approved'}
                   </span>
                   {snipFiles[v.id] && (
-                    <span className="block text-[10px] text-emerald-700 font-bold">✓ Snip attached</span>
+                    <span className="block text-[10px] text-emerald-700 font-bold mt-1">✓ Snip attached</span>
                   )}
                 </div>
               </div>
@@ -133,8 +126,8 @@ export default function StepReviewGenerate({
           </div>
 
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
-            <span className="text-xs uppercase font-bold text-slate-600">Total Quoted Value</span>
-            <span className="text-lg font-extrabold text-amber-800 font-['Outfit']">{formattedTotal}</span>
+            <span className="text-xs uppercase font-bold text-slate-600">Selected Specifications</span>
+            <span className="text-sm font-bold text-slate-900 font-['Outfit']">{selectedVariants.length} Active Modules</span>
           </div>
         </div>
 

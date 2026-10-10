@@ -19,7 +19,6 @@ const fallbackVariants = [
     name: 'SURABHI - LL ELITE',
     category: 'Premium Marine Interior',
     description: 'High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.',
-    price: 345000,
     specs: {
       carcassMaterial: 'Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R',
       carcassFinish: 'Frosty White',
@@ -35,7 +34,6 @@ const fallbackVariants = [
     name: 'CAPRICOAST MATTE',
     category: 'Ultra Matte Contemporary',
     description: 'Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.',
-    price: 395000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White / Grey Linum',
@@ -51,7 +49,6 @@ const fallbackVariants = [
     name: 'CAPRICOST GLOSSY',
     category: 'High Gloss Elegance',
     description: 'High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.',
-    price: 430000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White',
@@ -67,7 +64,6 @@ const fallbackVariants = [
     name: 'ELEGANT SURABHI',
     category: 'Architectural Grade Luxury',
     description: 'BWP 710 Gurjan Ply with super matte 1mm branded laminate and Grade 1 soft-closing hardware.',
-    price: 520000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade with both side Laminate',
       carcassFinish: 'Premium Frosty Linum',
@@ -83,7 +79,6 @@ const fallbackVariants = [
     name: '4X TUFF GLOSS',
     category: 'Scratch & Stain Proof Signature',
     description: 'Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.',
-    price: 580000,
     specs: {
       carcassMaterial: 'GREENPLY BWP 710 Grade',
       carcassFinish: 'Frosty White Deluxe',

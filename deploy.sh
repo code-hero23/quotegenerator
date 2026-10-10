@@ -19,7 +19,15 @@ echo "=========================================================="
 # 1. Pull latest code from GitHub
 echo ""
 echo "📥 [1/6] Pulling latest updates from GitHub (main)..."
+git reset --hard HEAD || true
 git pull origin main
+
+# Ensure Nginx allows large multi-image quotation payloads
+if [ -d /etc/nginx ]; then
+    echo "Ensuring Nginx client_max_body_size is set to 100M for quotation image uploads..."
+    echo "client_max_body_size 100M;" | sudo tee /etc/nginx/conf.d/quotegenerator_limits.conf > /dev/null || true
+    sudo systemctl reload nginx 2>/dev/null || true
+fi
 
 # 2. Install Presentation Fonts (including Baskerville, Klein, Moontime, Caudex, Inter, Calibri, Segoe UI)
 echo ""

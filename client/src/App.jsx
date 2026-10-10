@@ -178,7 +178,7 @@ export default function App() {
     try {
       const res = await axios.get(`${API_BASE}/health`);
       if (res.data) {
-        setIsPostgresConnected(res.data.postgresConnected);
+        // Backend health verified
       }
     } catch (e) {
       console.warn('Backend health check error:', e.message);
@@ -287,7 +287,16 @@ export default function App() {
       }
     } catch (err) {
       console.error('Generation error:', err);
-      const msg = err.response?.data?.error || err.message || 'An error occurred while generating exports.';
+      let msg = err.response?.data?.error;
+      if (!msg) {
+        if (err.code === 'ERR_NETWORK' || !err.response) {
+          msg = 'Network connection error: Failed to reach backend at ' + API_BASE + '. Please ensure your network/internet is connected and the quotation server is active.';
+        } else if (err.response?.status === 413) {
+          msg = 'Upload payload too large. The uploaded snip images exceed server limits. Try optimizing image sizes.';
+        } else {
+          msg = err.message || 'An error occurred while generating exports.';
+        }
+      }
       setErrorMessage(msg);
       return { success: false, error: msg };
     } finally {

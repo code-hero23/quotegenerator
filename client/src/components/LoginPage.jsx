@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -19,7 +19,6 @@ export default function LoginPage({ onLogin }) {
       return;
     }
 
-    // Single simple login: accepts admin/admin123 or any valid credentials entered
     onLogin({
       username: trimmedUser,
       name: trimmedUser === 'admin' ? 'Mr. Abishek' : trimmedUser,
@@ -28,23 +27,23 @@ export default function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#080c14] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       
       {/* Background Ambient Glows */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2 translate-y-1/2" />
+      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
+      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-sky-400/10 rounded-full blur-3xl pointer-events-none translate-x-1/2 translate-y-1/2" />
 
       {/* Header / Logo */}
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 text-center space-y-4">
-        <div className="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-amber-200 items-center justify-center shadow-xl shadow-amber-500/20 ring-1 ring-white/20">
-          <Layers className="w-8 h-8 text-slate-950 font-bold" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 text-center space-y-3">
+        <div className="inline-flex p-2.5 bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <img src="/logo.jpeg" alt="Cookscape Logo" className="h-16 w-auto object-contain rounded-xl" />
         </div>
 
         <div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight font-['Outfit']">
+          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight font-['Outfit']">
             COOKSCAPE STUDIO
           </h2>
-          <p className="text-sm text-amber-400 font-medium mt-1">
+          <p className="text-sm text-amber-700 font-semibold mt-0.5">
             Quotation Generator Portal
           </p>
         </div>
@@ -52,18 +51,18 @@ export default function LoginPage({ onLogin }) {
 
       {/* Simple Login Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="glass-panel p-8 sm:p-10 space-y-6 border border-white/10 shadow-2xl">
+        <div className="bg-white p-8 sm:p-10 space-y-6 border border-slate-200 rounded-2xl shadow-xl">
           
           <div>
-            <h3 className="text-lg font-bold text-white">Sign In</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h3 className="text-lg font-bold text-slate-900">Sign In</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
               Enter your username and password to continue
             </p>
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center space-x-2 text-rose-300 text-xs animate-fadeIn">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-center space-x-2 text-rose-700 text-xs animate-fadeIn">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{error}</span>
             </div>
           )}
@@ -103,7 +102,7 @@ export default function LoginPage({ onLogin }) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -111,15 +110,15 @@ export default function LoginPage({ onLogin }) {
             </div>
 
             {/* Quick Demo Credentials Hint */}
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-              <span>Demo login: <code className="text-amber-400 font-mono">admin</code> / <code className="text-amber-400 font-mono">admin123</code></span>
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+              <span>Demo login: <code className="text-amber-700 font-mono font-semibold">admin</code> / <code className="text-amber-700 font-mono font-semibold">admin123</code></span>
               <button
                 type="button"
                 onClick={() => {
                   setUsername('admin');
                   setPassword('admin123');
                 }}
-                className="text-amber-400 hover:underline font-medium text-[11px]"
+                className="text-amber-600 hover:underline font-semibold text-[11px]"
               >
                 Auto-fill
               </button>
@@ -128,7 +127,7 @@ export default function LoginPage({ onLogin }) {
             {/* Sign In Button */}
             <button
               type="submit"
-              className="btn-gold w-full py-3.5 text-base shadow-xl shadow-amber-500/20 mt-2"
+              className="btn-gold w-full py-3.5 text-base shadow-lg shadow-amber-500/20 mt-2"
             >
               <span>Sign In</span>
               <ArrowRight className="w-4 h-4" />

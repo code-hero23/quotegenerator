@@ -39,7 +39,6 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    postgresConnected: dbService.isPostgresReady(),
     masterTemplatePath: process.env.MASTER_TEMPLATE_PATH || path.resolve(__dirname, '../../Master-Template.pptx')
   });
 });
@@ -63,13 +62,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server
-async function startServer() {
-  console.log('🔄 Checking database connection...');
-  await dbService.checkPgConnection();
-
+function startServer() {
   app.listen(PORT, () => {
     console.log(`====================================================`);
-    console.log(`🚀 PERN Quotation Generator Backend running on port ${PORT}`);
+    console.log(`🚀 Quotation Generator Backend running on port ${PORT}`);
     console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
     console.log(`📄 Variants API: http://localhost:${PORT}/api/variants`);
     console.log(`====================================================`);

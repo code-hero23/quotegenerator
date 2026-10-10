@@ -34,16 +34,16 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
   const isValid = clientInfo.name && clientInfo.contact && clientInfo.location;
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn">
       
       {/* Intro Banner with One-Click Pre-fills */}
       <div className="glass-panel p-6 border-l-4 border-l-amber-500 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400" />
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-amber-600" />
             Cover Page & Footer Typography
           </h3>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-600 mt-1">
             These variables are dynamically injected into Slide 1 (Cover Page) and into the footer banner across every variant slide in the presentation.
           </p>
         </div>
@@ -52,31 +52,31 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
           <button
             type="button"
             onClick={loadTemplateDefaults}
-            className="px-3.5 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-amber-300 transition-colors"
+            className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors"
           >
             Load Master Template Defaults
           </button>
           <button
             type="button"
             onClick={loadSampleClient}
-            className="px-3.5 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-400 transition-colors"
+            className="px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition-colors"
           >
             Demo Premium Client
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         {/* Client Details Section */}
         <div className="glass-panel p-6 space-y-5">
-          <div className="flex items-center space-x-3 pb-3 border-b border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="flex items-center space-x-3 pb-3 border-b border-slate-200">
+            <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center text-amber-700">
               <User className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Client Details</h3>
-              <p className="text-xs text-slate-400">Appears on Cover Page & Master Footers</p>
+              <h3 className="font-bold text-slate-900 text-base">Client Details</h3>
+              <p className="text-xs text-slate-500">Appears on Cover Page & Master Footers</p>
             </div>
           </div>
 
@@ -144,13 +144,13 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
 
         {/* Sales Rep / Designer Section */}
         <div className="glass-panel p-6 space-y-5">
-          <div className="flex items-center space-x-3 pb-3 border-b border-white/10">
-            <div className="w-9 h-9 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+          <div className="flex items-center space-x-3 pb-3 border-b border-slate-200">
+            <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center text-sky-700">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Sales Representative / Designer</h3>
-              <p className="text-xs text-slate-400">Appears in Designer Details box on Cover Page</p>
+              <h3 className="font-bold text-slate-900 text-base">Sales Representative / Designer</h3>
+              <p className="text-xs text-slate-500">Appears in Designer Details box on Cover Page</p>
             </div>
           </div>
 
@@ -198,11 +198,11 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
             </div>
 
             {/* Live Footer Preview Box */}
-            <div className="p-4 rounded-xl bg-slate-950/70 border border-white/10 space-y-1.5 mt-2">
-              <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider block">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 mt-2">
+              <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">
                 Slide Footer Preview:
               </span>
-              <p className="text-xs font-mono text-slate-300 break-words">
+              <p className="text-xs font-mono text-slate-700 break-words">
                 {clientInfo.name || '[Client Name]'} | {clientInfo.location || '[Location]'} | {clientInfo.contact || '[Contact]'}
               </p>
             </div>
@@ -212,7 +212,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
       </div>
 
       {/* Navigation Next */}
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-end pt-2">
         <button
           type="button"
           onClick={onNext}

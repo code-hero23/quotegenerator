@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { UploadCloud, Image as ImageIcon, X, ArrowLeft, ArrowRight, CheckCircle2, FileImage } from 'lucide-react';
+import React from 'react';
+import { UploadCloud, X, ArrowLeft, ArrowRight, CheckCircle2, FileImage } from 'lucide-react';
 
 export default function StepSnipUpload({
   variants = [],
@@ -34,16 +34,16 @@ export default function StepSnipUpload({
       {/* Informative Header */}
       <div className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <UploadCloud className="w-5 h-5 text-amber-400" />
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <UploadCloud className="w-5 h-5 text-amber-600" />
             Quotation Snips & Itemized Tables
           </h3>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-600 mt-0.5">
             Attach screenshot snips of your itemized pricing breakdown. The backend will automatically inject each image into its respective variant Quotation slide.
           </p>
         </div>
 
-        <div className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-300 shrink-0">
+        <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-800 shrink-0">
           Optional • You may skip if not using snips
         </div>
       </div>
@@ -63,12 +63,12 @@ export default function StepSnipUpload({
               {/* Variant Title & Quote Slide Tag */}
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-bold text-white text-base">{variant.name}</h4>
-                  <span className="text-xs text-amber-400 font-medium">Injected on Slide {quoteSlide}</span>
+                  <h4 className="font-bold text-slate-900 text-base">{variant.name}</h4>
+                  <span className="text-xs text-amber-800 font-semibold">Injected on Slide {quoteSlide}</span>
                 </div>
                 {file && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span className="flex items-center gap-1 text-xs text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     Attached
                   </span>
                 )}
@@ -76,23 +76,23 @@ export default function StepSnipUpload({
 
               {/* Upload Drop Zone / Preview */}
               {file ? (
-                <div className="relative rounded-xl border border-emerald-500/30 bg-slate-900/80 p-4 flex items-center space-x-4">
+                <div className="relative rounded-xl border border-emerald-300 bg-emerald-50/30 p-4 flex items-center space-x-4">
                   {/* Thumbnail */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-black shrink-0 border border-white/10 flex items-center justify-center">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-white shrink-0 border border-slate-200 flex items-center justify-center p-1">
                     <img
                       src={URL.createObjectURL(file)}
                       alt="Snip preview"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain rounded"
                     />
                   </div>
 
                   {/* Info */}
                   <div className="overflow-hidden flex-1">
-                    <p className="text-sm font-semibold text-slate-200 truncate">{file.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 font-mono">
+                    <p className="text-sm font-bold text-slate-900 truncate">{file.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 font-mono">
                       {(file.size / 1024).toFixed(1)} KB • {file.type || 'image'}
                     </p>
-                    <span className="inline-block mt-2 text-[11px] text-emerald-400 font-medium">
+                    <span className="inline-block mt-2 text-[11px] text-emerald-700 font-bold">
                       ✓ Ready for PPTX injection
                     </span>
                   </div>
@@ -101,14 +101,14 @@ export default function StepSnipUpload({
                   <button
                     type="button"
                     onClick={() => removeFile(variant.id)}
-                    className="p-2 rounded-lg bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
+                    className="p-2 rounded-lg bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 transition-colors"
                     title="Remove snip"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
-                <label className="border-2 border-dashed border-white/15 hover:border-amber-500/50 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-900/30 hover:bg-slate-900/60 group">
+                <label className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 hover:bg-amber-50/20 group">
                   <input
                     type="file"
                     accept="image/png, image/jpeg, image/webp"
@@ -119,10 +119,10 @@ export default function StepSnipUpload({
                       }
                     }}
                   />
-                  <div className="w-12 h-12 rounded-xl bg-white/5 group-hover:bg-amber-500/20 flex items-center justify-center text-slate-400 group-hover:text-amber-400 transition-colors mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 group-hover:bg-amber-100 flex items-center justify-center text-slate-500 group-hover:text-amber-700 transition-colors mb-3 shadow-xs">
                     <FileImage className="w-6 h-6" />
                   </div>
-                  <span className="text-sm font-semibold text-slate-300 group-hover:text-amber-300 text-center">
+                  <span className="text-sm font-bold text-slate-800 group-hover:text-amber-900 text-center">
                     Upload Quotation Snip for {variant.name}
                   </span>
                   <span className="text-xs text-slate-500 mt-1">
@@ -137,7 +137,7 @@ export default function StepSnipUpload({
       </div>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between pt-4">
+      <div className="flex items-center justify-between pt-2">
         <button
           type="button"
           onClick={onBack}

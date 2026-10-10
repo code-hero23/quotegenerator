@@ -14,20 +14,20 @@ export default function PdfViewerModal({ isOpen, onClose, pdfUrl, title }) {
     : pdfUrl.replace('/view/', '/download/');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-      <div className="glass-panel w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden border border-white/20 shadow-2xl bg-slate-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white w-full max-w-5xl h-[92vh] flex flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-2xl">
         
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-900/80">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white truncate max-w-md">
+              <h3 className="text-base font-bold text-slate-900 truncate max-w-md">
                 {title || 'Quotation PDF Preview'}
               </h3>
-              <p className="text-xs text-slate-400">Live Vector PDF Document Viewer</p>
+              <p className="text-xs text-slate-500 font-medium">Live Vector PDF Document Viewer</p>
             </div>
           </div>
 
@@ -37,7 +37,7 @@ export default function PdfViewerModal({ isOpen, onClose, pdfUrl, title }) {
               href={viewUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               title="Open in new window"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -48,7 +48,7 @@ export default function PdfViewerModal({ isOpen, onClose, pdfUrl, title }) {
             <a
               href={downloadUrl}
               download
-              className="px-3.5 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 border border-cyan-300 text-cyan-800 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download PDF</span>
@@ -57,7 +57,7 @@ export default function PdfViewerModal({ isOpen, onClose, pdfUrl, title }) {
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -65,7 +65,7 @@ export default function PdfViewerModal({ isOpen, onClose, pdfUrl, title }) {
         </div>
 
         {/* Embedded PDF iframe */}
-        <div className="flex-1 w-full bg-slate-900/50 relative">
+        <div className="flex-1 w-full bg-slate-100 relative">
           <iframe
             src={viewUrl}
             title="Quotation PDF"

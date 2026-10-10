@@ -1,8 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
-
-const prisma = new PrismaClient();
 
 // Initial seed dataset (mirrors Master-Template.pptx)
 const defaultVariants = [
@@ -113,15 +110,18 @@ const defaultClients = [
   }
 ];
 
-// Fallback in-memory storage file
+// Persistent file-based store
 const storagePath = path.resolve(__dirname, '../../uploads/local_store.json');
 
 function loadLocalStore() {
   if (fs.existsSync(storagePath)) {
     try {
-      return JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
+      const parsed = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
+      if (parsed && Array.isArray(parsed.variants)) {
+        return parsed;
+      }
     } catch (e) {
-      // Fallback
+      console.warn('Warning: Could not parse local_store.json, re-initializing defaults.');
     }
   }
   const initial = {
@@ -138,100 +138,57 @@ function saveLocalStore(data) {
   try {
     const dir = path.dirname(storagePath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(storagePath, JSON.stringify(data, null, 2));
+    fs.writeFileSync(storagePath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (e) {
     console.error('Error saving local store:', e.message);
   }
 }
 
-let isPgConnected = false;
-
-// Check PostgreSQL connection
-async function checkPgConnection() {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    isPgConnected = true;
-    console.log('✅ Connected to PostgreSQL database via Prisma');
-    return true;
-  } catch (err) {
-    isPgConnected = false;
-    console.warn('ℹ️ PostgreSQL is not reachable yet. Using high-resilience local data store. Once DATABASE_URL is configured, PostgreSQL will be used automatically.');
-    return false;
-  }
-}
-
 // Data Access API
 const dbService = {
-  prisma,
-  checkPgConnection,
-  isPostgresReady: () => isPgConnected,
+  isPostgresReady: () => false,
 
   async getVariants() {
-    if (isPgConnected) {
-      try {
-        return await prisma.variant.findMany({ orderBy: { createdAt: 'asc' } });
-      } catch (e) {
-        console.warn('Prisma query failed, using local store:', e.message);
-      }
-    }
     const store = loadLocalStore();
-    return store.variants;
+    return store.variants || defaultVariants;
   },
 
   async getVariantById(id) {
-    if (isPgConnected) {
-      try {
-        return await prisma.variant.findUnique({ where: { id } });
-      } catch (e) {}
-    }
     const store = loadLocalStore();
-    return store.variants.find(v => v.id === id);
+    return (store.variants || []).find(v => v.id === id);
   },
 
   async getUsers() {
-    if (isPgConnected) {
-      try {
-        return await prisma.user.findMany();
-      } catch (e) {}
-    }
     const store = loadLocalStore();
-    return store.users;
+    return store.users || defaultUsers;
   },
 
   async getClients() {
-    if (isPgConnected) {
-      try {
-        return await prisma.client.findMany({ orderBy: { createdAt: 'desc' } });
-      } catch (e) {}
-    }
     const store = loadLocalStore();
-    return store.clients;
+    return store.clients || defaultClients;
   },
 
   async upsertClient(clientData) {
-    if (isPgConnected) {
-      try {
-        if (clientData.id) {
-          return await prisma.client.upsert({
-            where: { id: clientData.id },
-            update: clientData,
-            create: clientData
-          });
-        } else {
-          return await prisma.client.create({ data: clientData });
-        }
-      } catch (e) {
-        console.warn('Prisma client upsert failed:', e.message);
-      }
-    }
     const store = loadLocalStore();
-    let existingIndex = store.clients.findIndex(c => c.name === clientData.name || c.contactNumber === clientData.contactNumber);
+    if (!store.clients) store.clients = [...defaultClients];
+
+    let existingIndex = store.clients.findIndex(c => 
+      (clientData.id && c.id === clientData.id) ||
+      (c.name && clientData.name && c.name.toLowerCase() === clientData.name.toLowerCase()) || 
+      (c.contactNumber && clientData.contactNumber && c.contactNumber === clientData.contactNumber)
+    );
+
     if (existingIndex >= 0) {
-      store.clients[existingIndex] = { ...store.clients[existingIndex], ...clientData };
+      store.clients[existingIndex] = { ...store.clients[existingIndex], ...clientData, updatedAt: new Date() };
       saveLocalStore(store);
       return store.clients[existingIndex];
     } else {
-      const newClient = { id: clientData.id || `client-${Date.now()}`, ...clientData, createdAt: new Date() };
+      const newClient = { 
+        id: clientData.id || `client-${Date.now()}`, 
+        ...clientData, 
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
       store.clients.unshift(newClient);
       saveLocalStore(store);
       return newClient;
@@ -239,40 +196,26 @@ const dbService = {
   },
 
   async createQuotation(quoteData) {
-    if (isPgConnected) {
-      try {
-        return await prisma.quotation.create({
-          data: quoteData,
-          include: { client: true, user: true }
-        });
-      } catch (e) {
-        console.warn('Prisma quotation create failed:', e.message);
-      }
-    }
     const store = loadLocalStore();
+    if (!store.quotations) store.quotations = [];
+
     const newQuote = {
       id: quoteData.id || `quote-${Date.now()}`,
       ...quoteData,
       createdAt: new Date(),
-      client: store.clients.find(c => c.id === quoteData.clientId) || { name: 'Client' },
-      user: store.users.find(u => u.id === quoteData.userId) || { name: 'Sales Rep' }
+      updatedAt: new Date(),
+      client: (store.clients || []).find(c => c.id === quoteData.clientId) || { name: 'Client' },
+      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: 'Sales Rep' }
     };
+
     store.quotations.unshift(newQuote);
     saveLocalStore(store);
     return newQuote;
   },
 
   async getQuotations() {
-    if (isPgConnected) {
-      try {
-        return await prisma.quotation.findMany({
-          orderBy: { createdAt: 'desc' },
-          include: { client: true, user: true }
-        });
-      } catch (e) {}
-    }
     const store = loadLocalStore();
-    return store.quotations;
+    return store.quotations || [];
   }
 };
 

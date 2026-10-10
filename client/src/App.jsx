@@ -109,7 +109,6 @@ export default function App() {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [variants, setVariants] = useState(fallbackVariants);
-  const [isPostgresConnected, setIsPostgresConnected] = useState(false);
   const [quotations, setQuotations] = useState([]);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState({ isOpen: false, url: '', title: '' });
@@ -262,11 +261,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       
       {/* Top Header */}
       <Header
-        isPostgresConnected={isPostgresConnected}
         onOpenHistory={() => setIsHistoryOpen(true)}
         historyCount={quotations.length}
         activeUser={activeUser}
@@ -286,14 +284,14 @@ export default function App() {
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-rose-300 text-sm animate-fadeIn">
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between text-rose-700 text-sm animate-fadeIn">
             <div className="flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
+              <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
               <span>{errorMessage}</span>
             </div>
             <button
               onClick={() => setErrorMessage(null)}
-              className="text-xs font-semibold px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30"
+              className="text-xs font-semibold px-2.5 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800"
             >
               Dismiss
             </button>
@@ -367,8 +365,8 @@ export default function App() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-6 text-center text-xs text-slate-500">
-        <p>Cookscape Quotation Studio • PERN Stack Engine with Template Subtraction & Dual Export</p>
+      <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">
+        <p>Cookscape Quotation Studio • Master Template Subtraction & Dual Export</p>
       </footer>
 
     </div>

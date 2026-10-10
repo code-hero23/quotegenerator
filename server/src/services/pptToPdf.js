@@ -147,19 +147,36 @@ function convertWithLibreOffice(pptxPath, pdfPath) {
 
     console.log(`🔄 Launching LibreOffice headless conversion for: ${path.basename(pptxPath)}...`);
 
+    // Create an isolated UserInstallation profile to avoid process locking, crashed session recovery, or shared profile collisions
+    const userProfileDir = path.join(os.tmpdir(), `lo_prof_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+    const normalizedProfilePath = userProfileDir.replace(/\\/g, '/');
+    const profileUri = normalizedProfilePath.startsWith('/')
+      ? `file://${normalizedProfilePath}`
+      : `file:///${normalizedProfilePath}`;
+
+    const cleanupProfile = () => {
+      try {
+        if (fs.existsSync(userProfileDir)) {
+          fs.rmSync(userProfileDir, { recursive: true, force: true });
+        }
+      } catch (e) {}
+    };
+
     function tryCommand(index) {
       if (index >= commands.length) {
+        cleanupProfile();
         return resolve({ 
           success: false, 
-          error: 'Neither PowerPoint COM nor LibreOffice (soffice) could convert PPTX to PDF. Install LibreOffice on your VPS: sudo apt install -y libreoffice-impress' 
+          error: 'Neither PowerPoint COM nor LibreOffice (soffice) could convert PPTX to PDF. Ensure LibreOffice is installed: sudo apt install -y libreoffice-impress' 
         });
       }
 
       const bin = commands[index];
-      const cmd = `${bin} --headless --convert-to pdf --outdir "${destDir}" "${absPptx}"`;
+      // Use impress_pdf_Export to explicitly invoke the PowerPoint / Impress presentation export engine
+      const baseFlags = `--headless --norestore --nodefault --nofirststartwizard -env:UserInstallation="${profileUri}"`;
+      const cmd = `${bin} ${baseFlags} --convert-to "pdf:impress_pdf_Export" --outdir "${destDir}" "${absPptx}"`;
 
       exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
-        // If LibreOffice produced the PDF
         let foundPath = fs.existsSync(pdfPath) ? pdfPath : (fs.existsSync(expectedOutput) ? expectedOutput : null);
 
         if (foundPath && fs.statSync(foundPath).size > 0) {
@@ -171,11 +188,29 @@ function convertWithLibreOffice(pptxPath, pdfPath) {
             }
           }
           const size = fs.statSync(pdfPath).size;
-          console.log(`✅ LibreOffice converted PPTX to PDF successfully (${(size / (1024 * 1024)).toFixed(2)} MB)`);
+          console.log(`✅ LibreOffice converted PPTX to PDF successfully via Impress engine (${(size / (1024 * 1024)).toFixed(2)} MB)`);
+          cleanupProfile();
           return resolve({ success: true, fileSize: size });
         } else {
-          // Try next command
-          tryCommand(index + 1);
+          // Fallback to standard --convert-to pdf filter before trying next binary
+          const fallbackCmd = `${bin} ${baseFlags} --convert-to pdf --outdir "${destDir}" "${absPptx}"`;
+          exec(fallbackCmd, { timeout: 60000 }, (fErr, fStdout, fStderr) => {
+            let fallbackFound = fs.existsSync(pdfPath) ? pdfPath : (fs.existsSync(expectedOutput) ? expectedOutput : null);
+            if (fallbackFound && fs.statSync(fallbackFound).size > 0) {
+              if (fallbackFound !== pdfPath) {
+                try {
+                  fs.renameSync(fallbackFound, pdfPath);
+                } catch (e) {
+                  fs.copyFileSync(fallbackFound, pdfPath);
+                }
+              }
+              const size = fs.statSync(pdfPath).size;
+              console.log(`✅ LibreOffice converted PPTX to PDF via fallback filter (${(size / (1024 * 1024)).toFixed(2)} MB)`);
+              cleanupProfile();
+              return resolve({ success: true, fileSize: size });
+            }
+            tryCommand(index + 1);
+          });
         }
       });
     }

@@ -21,16 +21,34 @@ echo ""
 echo "📥 [1/5] Pulling latest updates from GitHub (main)..."
 git pull origin main
 
-# 2. Ensure LibreOffice is installed for direct PPTX to PDF export
+# 2. Install Presentation Fonts & LibreOffice for 100% PPTX to PDF Alignment
 echo ""
-echo "📄 [2/5] Checking LibreOffice converter availability..."
-if ! command -v soffice &> /dev/null && ! command -v libreoffice &> /dev/null; then
-    echo "Installing LibreOffice for headless PPTX to PDF export..."
-    sudo apt-get update -qq
-    sudo apt-get install -y --no-install-recommends libreoffice-impress libreoffice-common
-else
-    echo "LibreOffice is already installed and ready for PPTX to PDF export."
+echo "🔤 [2/5] Installing presentation fonts (Calibri, Segoe UI, Times, Arial)..."
+sudo mkdir -p /usr/local/share/fonts/quotegenerator
+mkdir -p "$HOME/.local/share/fonts/quotegenerator"
+
+if [ -d "$APP_DIR/server/fonts" ]; then
+    echo "Copying bundled fonts to system font directories..."
+    sudo cp -f "$APP_DIR/server/fonts"/* /usr/local/share/fonts/quotegenerator/
+    sudo chmod 644 /usr/local/share/fonts/quotegenerator/*
+    
+    cp -f "$APP_DIR/server/fonts"/* "$HOME/.local/share/fonts/quotegenerator/"
+    chmod 644 "$HOME/.local/share/fonts/quotegenerator/"*
 fi
+
+echo "Installing fontconfig, metric-compatible font packages & LibreOffice Impress..."
+sudo apt-get update -qq
+sudo apt-get install -y --no-install-recommends \
+    fontconfig \
+    fonts-crosextra-carlito \
+    fonts-crosextra-caladea \
+    fonts-liberation \
+    libreoffice-impress \
+    libreoffice-common
+
+echo "Rebuilding font cache to register presentation fonts..."
+sudo fc-cache -f
+fc-cache -f
 
 # 3. Update Server Dependencies & Configure Port 5002
 echo ""

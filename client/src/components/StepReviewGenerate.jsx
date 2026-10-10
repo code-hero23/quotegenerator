@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Download, ArrowLeft, Cpu, CheckCircle2, 
-  Layers, User, Sparkles, Loader2, FileText, Eye, Maximize2 
+  Layers, User, Sparkles, Loader2, FileText, Eye, Maximize2, PlusCircle 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -283,13 +283,14 @@ export default function StepReviewGenerate({
             </div>
           )}
 
-          <div className="pt-2">
+          <div className="pt-6 pb-2 flex justify-center">
             <button
               type="button"
               onClick={onReset}
-              className="btn-secondary px-6 py-2.5 text-xs text-slate-600 hover:text-slate-900"
+              className="px-10 py-4.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white text-base md:text-lg font-bold shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3.5 cursor-pointer border border-amber-400/40"
             >
-              Create Another Quotation
+              <PlusCircle className="w-6 h-6 text-white" />
+              <span>Create Another Quotation</span>
             </button>
           </div>
         </div>

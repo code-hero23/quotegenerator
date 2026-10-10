@@ -113,16 +113,16 @@ export default function App() {
 
   // Form State
   const [clientInfo, setClientInfo] = useState({
-    name: 'Dr. Siddharth & Meera Menon',
-    contact: '98401 23456',
-    location: 'Skyline Waterfront Penthouse, ECR',
+    name: 'Aravindan',
+    contact: '7418414780',
+    location: 'Individual Villa Adyar',
     date: new Date().toLocaleDateString('en-GB')
   });
 
   const [repInfo, setRepInfo] = useState({
-    name: 'Karthik Ramanathan',
-    contact: '94444 88888',
-    email: 'karthik@cookscape.in'
+    name: 'Mr. Abishek',
+    contact: '93611 84787',
+    email: 'designs.cookscape@gmail.com'
   });
 
   const [selectedVariantIds, setSelectedVariantIds] = useState([
@@ -291,7 +291,9 @@ export default function App() {
     if (quote.snipsMetadata && typeof quote.snipsMetadata === 'object') {
       const restoredSnips = {};
       Object.entries(quote.snipsMetadata).forEach(([vid, items]) => {
-        restoredSnips[vid] = (Array.isArray(items) ? items : [items]).map(item => ({
+        restoredSnips[vid] = (Array.isArray(items) ? items : [items]).map((item, idx) => ({
+          id: item.id || `snip_${vid}_${idx + 1}`,
+          title: item.title || (idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`),
           file: null,
           previewUrl: typeof item === 'string' ? item : (item.previewUrl || null),
           filePath: item.filePath || null
@@ -342,9 +344,12 @@ export default function App() {
 
       // Append snip images or preserve existing preview URLs on re-edit
       const existingSnips = {};
+      const quotationPagesMetadata = {};
+
       Object.entries(snipFiles).forEach(([variantId, snipsOrFile]) => {
         if (Array.isArray(snipsOrFile)) {
-          snipsOrFile.forEach((item, index) => {
+          const filledItems = snipsOrFile.filter(item => item && (item.file || item.previewUrl || item instanceof File));
+          filledItems.forEach((item, index) => {
             const file = item?.file || (item instanceof File ? item : null);
             if (file) {
               formData.append(`snip_${variantId}_${index}`, file);
@@ -353,6 +358,15 @@ export default function App() {
               existingSnips[variantId].push(item.previewUrl);
             }
           });
+
+          if (filledItems.length > 0) {
+            quotationPagesMetadata[variantId] = filledItems.map((item, idx) => ({
+              id: item.id || `quote_page_${idx + 1}`,
+              title: item.title || (idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`),
+              previewUrl: item.previewUrl || null,
+              filePath: item.filePath || null
+            }));
+          }
         } else if (snipsOrFile) {
           const file = snipsOrFile?.file || (snipsOrFile instanceof File ? snipsOrFile : null);
           if (file) {
@@ -361,11 +375,19 @@ export default function App() {
             if (!existingSnips[variantId]) existingSnips[variantId] = [];
             existingSnips[variantId].push(snipsOrFile.previewUrl);
           }
+          quotationPagesMetadata[variantId] = [{
+            id: snipsOrFile.id || 'quote_page_1',
+            title: snipsOrFile.title || 'Main Quotation',
+            previewUrl: snipsOrFile.previewUrl || null,
+            filePath: snipsOrFile.filePath || null
+          }];
         }
       });
+
       if (Object.keys(existingSnips).length > 0) {
         formData.append('existingSnips', JSON.stringify(existingSnips));
       }
+      formData.append('quotationPagesMetadata', JSON.stringify(quotationPagesMetadata));
 
       // Append unit pages metadata & unit snip files
       formData.append('unitPagesMetadata', JSON.stringify(unitPages.map(p => ({

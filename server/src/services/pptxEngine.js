@@ -162,6 +162,7 @@ class PptxEngine {
     snips = {},
     unitSnips = [],
     accessorySnips = [],
+    quotationPagesMetadata = {},
     outputPath
   }) {
     if (!fs.existsSync(this.masterTemplatePath)) {
@@ -540,9 +541,11 @@ class PptxEngine {
           const extraSldId = String(60000 + vIdx * 100 + sIdx);
 
           let extraXml = baseSlideXml;
+          const customTitle = (quotationPagesMetadata && quotationPagesMetadata[vId] && quotationPagesMetadata[vId][sIdx]?.title) 
+            || `Quotation (Page ${sIdx + 1})`;
           extraXml = extraXml.replace(
             /<a:t>Quotation<\/a:t>/,
-            `<a:t>Quotation (Page ${sIdx + 1})</a:t>`
+            `<a:t>${escapeXml(customTitle)}</a:t>`
           );
 
           let extraBuffer = null;

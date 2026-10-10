@@ -126,7 +126,7 @@ export default function StepReviewGenerate({
           <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
             {selectedVariants.map(v => {
               const vSnips = Array.isArray(snipFiles[v.id]) 
-                ? snipFiles[v.id].filter(s => s && (s.file || s instanceof File))
+                ? snipFiles[v.id].filter(s => s && (s.file || s.previewUrl || s instanceof File))
                 : (snipFiles[v.id] ? [snipFiles[v.id]] : []);
               const snipCount = vSnips.length;
 
@@ -142,7 +142,7 @@ export default function StepReviewGenerate({
                     </span>
                     {snipCount > 0 ? (
                       <span className="block text-[10px] text-emerald-700 font-bold mt-1">
-                        ✓ {snipCount} {snipCount === 1 ? 'Snip' : 'Snips'} attached
+                        ✓ {snipCount} {snipCount === 1 ? 'Quotation Page' : `Pages (+${snipCount - 1} Extra)`}
                       </span>
                     ) : (
                       <span className="block text-[10px] text-slate-400 font-medium mt-1">

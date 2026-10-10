@@ -299,6 +299,15 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       accessoryPagesMetadata = [];
     }
 
+    let quotationPagesMetadata = {};
+    try {
+      quotationPagesMetadata = typeof body.quotationPagesMetadata === 'string'
+        ? JSON.parse(body.quotationPagesMetadata)
+        : (body.quotationPagesMetadata || {});
+    } catch (e) {
+      quotationPagesMetadata = {};
+    }
+
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         // Check if unit snip
@@ -465,6 +474,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       snips,
       unitSnips,
       accessorySnips,
+      quotationPagesMetadata,
       outputPath: pptxOutputPath
     });
 
@@ -526,12 +536,14 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       snipsMetadata: Object.fromEntries(
         Object.entries(snips).map(([vid, files]) => [
           vid,
-          (Array.isArray(files) ? files : [files]).map(f => ({
+          (Array.isArray(files) ? files : [files]).map((f, fIdx) => ({
             filePath: f,
-            previewUrl: `/uploads/snips/${path.basename(f)}`
+            previewUrl: `/uploads/snips/${path.basename(f)}`,
+            title: quotationPagesMetadata?.[vid]?.[fIdx]?.title || (fIdx === 0 ? 'Main Quotation' : `Quotation Page ${fIdx + 1}`)
           }))
         ])
       ),
+      quotationPagesMetadata,
       filePath: pptxOutputPath,
       fileSize: pptxResult.fileSize,
       downloadUrl: pptxDownloadUrl,

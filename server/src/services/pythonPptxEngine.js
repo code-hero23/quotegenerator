@@ -20,7 +20,9 @@ class PythonPptxEngine {
       allVariants: options.allVariants,
       clientInfo: options.clientInfo,
       repInfo: options.repInfo,
-      snips: options.snips || {}
+      snips: options.snips || {},
+      unitSnips: options.unitSnips || [],
+      accessorySnips: options.accessorySnips || []
     };
 
     fs.writeFileSync(tempPayloadPath, JSON.stringify(payload, null, 2));

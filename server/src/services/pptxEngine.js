@@ -36,6 +36,7 @@ class PptxEngine {
     repInfo = {},
     snips = {},
     unitSnips = [],
+    accessorySnips = [],
     outputPath
   }) {
     if (!fs.existsSync(this.masterTemplatePath)) {
@@ -217,6 +218,96 @@ class PptxEngine {
           rId: unitRId,
           target: unitSlideTarget,
           fullZipPath: unitFullZipPath
+        });
+      }
+    }
+
+    // 2.6 Insert Accessory Snips Slides (if any accessory pages are uploaded)
+    if (Array.isArray(accessorySnips) && accessorySnips.length > 0) {
+      const templateSlideXml = await zip.file('ppt/slides/slide9.xml').async('text');
+      // Place accessory slides before timeline & terms slides (around displayIndex 22)
+      let accInsertIndex = keptSlides.findIndex(s => s.displayIndex >= 22);
+      if (accInsertIndex === -1) accInsertIndex = keptSlides.length;
+
+      for (let aIdx = 0; aIdx < accessorySnips.length; aIdx++) {
+        const a = accessorySnips[aIdx];
+        const accSlideTarget = `slides/slide_acc_${aIdx + 1}.xml`;
+        const accFullZipPath = `ppt/${accSlideTarget}`;
+        const accSlideRelsZipPath = `ppt/slides/_rels/slide_acc_${aIdx + 1}.xml.rels`;
+        const accRId = `rIdAcc_${aIdx + 1}`;
+        const accSldId = String(40000 + aIdx);
+
+        const aTitle = escapeXml(a.title || `Accessory Specification ${aIdx + 1}`);
+        const aCat = escapeXml(a.category || 'Hardware & Fittings');
+
+        let accXml = templateSlideXml;
+        accXml = accXml.replace(
+          /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
+          `<a:t>${aTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/><a:ea typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/></a:rPr><a:t>${aCat}</a:t>`
+        );
+
+        let accRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
+
+        const aFilePath = a.filePath || a.path;
+        let aBuffer = null;
+        let aExt = 'png';
+        if (Buffer.isBuffer(aFilePath)) {
+          aBuffer = aFilePath;
+        } else if (typeof aFilePath === 'string' && fs.existsSync(aFilePath)) {
+          aBuffer = fs.readFileSync(aFilePath);
+          aExt = path.extname(aFilePath).replace('.', '') || 'png';
+        }
+
+        if (aBuffer) {
+          const mediaFileName = `acc_snip_${aIdx + 1}_${Date.now()}.${aExt}`;
+          zip.file(`ppt/media/${mediaFileName}`, aBuffer);
+
+          const snipRelId = `rIdAccImg_${aIdx + 1}`;
+          const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
+          accRelsXml = accRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
+
+          const picXml = `
+            <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+              <p:nvPicPr>
+                <p:cNvPr id="${15000 + aIdx}" name="AccessorySnip_${aIdx + 1}"/>
+                <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                <p:nvPr/>
+              </p:nvPicPr>
+              <p:blipFill>
+                <a:blip r:embed="${snipRelId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </p:blipFill>
+              <p:spPr>
+                <a:xfrm>
+                  <a:off x="750000" y="2600000"/>
+                  <a:ext cx="8500000" cy="9500000"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </p:spPr>
+            </p:pic>
+          `.trim();
+          accXml = accXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+        }
+
+        zip.file(accFullZipPath, accXml);
+        zip.file(accSlideRelsZipPath, accRelsXml);
+
+        updatedContentTypes = updatedContentTypes.replace(
+          '</Types>',
+          `<Override PartName="/ppt/${accSlideTarget}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`
+        );
+
+        updatedPresRelsXml = updatedPresRelsXml.replace(
+          '</Relationships>',
+          `<Relationship Id="${accRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="${accSlideTarget}"/></Relationships>`
+        );
+
+        keptSlides.splice(accInsertIndex + aIdx, 0, {
+          displayIndex: 21.1 + aIdx,
+          id: accSldId,
+          rId: accRId,
+          target: accSlideTarget,
+          fullZipPath: accFullZipPath
         });
       }
     }

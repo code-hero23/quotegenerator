@@ -227,6 +227,8 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
 
     const snips = {};
     const unitSnips = [];
+    const accessorySnips = [];
+
     let unitPagesMetadata = [];
     try {
       unitPagesMetadata = typeof body.unitPagesMetadata === 'string'
@@ -234,6 +236,15 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
         : (body.unitPagesMetadata || []);
     } catch (e) {
       unitPagesMetadata = [];
+    }
+
+    let accessoryPagesMetadata = [];
+    try {
+      accessoryPagesMetadata = typeof body.accessoryPagesMetadata === 'string'
+        ? JSON.parse(body.accessoryPagesMetadata)
+        : (body.accessoryPagesMetadata || []);
+    } catch (e) {
+      accessoryPagesMetadata = [];
     }
 
     if (req.files && req.files.length > 0) {
@@ -247,6 +258,21 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
             id: unitId,
             title: meta.title || 'Unit Breakdown',
             category: meta.category || 'Unit Specification',
+            notes: meta.notes || '',
+            filePath: file.path
+          });
+          continue;
+        }
+
+        // Check if accessory snip
+        const accMatch = file.fieldname.match(/^accessory_snip_(.+)$/);
+        if (accMatch) {
+          const accId = accMatch[1];
+          const meta = accessoryPagesMetadata.find(m => String(m.id) === String(accId)) || {};
+          accessorySnips.push({
+            id: accId,
+            title: meta.title || 'Accessories & Hardware',
+            category: meta.category || 'Hardware Specifications',
             notes: meta.notes || '',
             filePath: file.path
           });
@@ -305,6 +331,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       repInfo,
       snips,
       unitSnips,
+      accessorySnips,
       outputPath: pptxOutputPath
     });
 

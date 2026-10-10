@@ -12,6 +12,7 @@ export default function StepReviewGenerate({
   selectedVariantIds,
   snipFiles,
   unitPages = [],
+  accessoryPages = [],
   onBack,
   onGenerate,
   isGenerating,
@@ -198,6 +199,42 @@ export default function StepReviewGenerate({
                   <span>#{i + 1}</span>
                   <span className="truncate max-w-[120px]">{u.category || u.title}</span>
                   {u.file && <span className="text-emerald-600 font-bold">✓</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Accessories Breakdown Snips Overview */}
+        {accessoryPages && accessoryPages.length > 0 && (
+          <div className="md:col-span-3 glass-panel p-4 flex flex-wrap items-center justify-between gap-3 bg-purple-50/40 border-purple-200">
+            <div className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-lg bg-purple-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-purple-600/30">
+                {accessoryPages.length}
+              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800">
+                  Accessories & Hardware Pages: <strong className="text-purple-900">{accessoryPages.length} Page(s)</strong>
+                </span>
+                <span className="text-[11px] text-slate-500 block">
+                  {accessoryPages.filter(a => a.file).length} hardware snip(s) attached
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {accessoryPages.map((a, i) => (
+                <span 
+                  key={a.id || i} 
+                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
+                    a.file 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                      : 'bg-white text-slate-600 border-slate-200'
+                  }`}
+                >
+                  <span>#{i + 1}</span>
+                  <span className="truncate max-w-[130px]">{a.category || a.title}</span>
+                  {a.file && <span className="text-emerald-600 font-bold">✓</span>}
                 </span>
               ))}
             </div>

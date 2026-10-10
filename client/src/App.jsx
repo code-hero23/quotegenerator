@@ -6,6 +6,7 @@ import StepClientRep from './components/StepClientRep';
 import StepVariantSelection from './components/StepVariantSelection';
 import StepUnitSnips from './components/StepUnitSnips';
 import StepSnipUpload from './components/StepSnipUpload';
+import StepAccessoriesSnips from './components/StepAccessoriesSnips';
 import StepReviewGenerate from './components/StepReviewGenerate';
 import QuotationHistoryModal from './components/QuotationHistoryModal';
 import PdfViewerModal from './components/PdfViewerModal';
@@ -139,6 +140,16 @@ export default function App() {
       previewUrl: null
     }
   ]);
+  const [accessoryPages, setAccessoryPages] = useState([
+    {
+      id: 'acc-1',
+      title: 'Accessory Page 1 - Kitchen Hardware & Baskets',
+      category: 'Kitchen Hardware & Baskets',
+      notes: '',
+      file: null,
+      previewUrl: null
+    }
+  ]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -234,6 +245,20 @@ export default function App() {
       unitPages.forEach(p => {
         if (p.file) {
           formData.append(`unit_snip_${p.id}`, p.file);
+        }
+      });
+
+      // Append accessory pages metadata & accessory snip files
+      formData.append('accessoryPagesMetadata', JSON.stringify(accessoryPages.map(p => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        notes: p.notes
+      }))));
+
+      accessoryPages.forEach(p => {
+        if (p.file) {
+          formData.append(`accessory_snip_${p.id}`, p.file);
         }
       });
 
@@ -360,6 +385,15 @@ export default function App() {
         )}
 
         {currentStep === 5 && (
+          <StepAccessoriesSnips
+            accessoryPages={accessoryPages}
+            setAccessoryPages={setAccessoryPages}
+            onBack={() => setCurrentStep(4)}
+            onNext={() => setCurrentStep(6)}
+          />
+        )}
+
+        {currentStep === 6 && (
           <StepReviewGenerate
             clientInfo={clientInfo}
             repInfo={repInfo}
@@ -367,7 +401,8 @@ export default function App() {
             selectedVariantIds={selectedVariantIds}
             snipFiles={snipFiles}
             unitPages={unitPages}
-            onBack={() => setCurrentStep(4)}
+            accessoryPages={accessoryPages}
+            onBack={() => setCurrentStep(5)}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             generationResult={generationResult}

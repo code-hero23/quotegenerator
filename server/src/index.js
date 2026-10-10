@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const dbService = require('./services/db');
 
 const variantsRouter = require('./routes/variants');
@@ -42,6 +43,18 @@ app.get('/api/health', (req, res) => {
     masterTemplatePath: process.env.MASTER_TEMPLATE_PATH || path.resolve(__dirname, '../../Master-Template.pptx')
   });
 });
+
+// Serve frontend static build if built (Production deployment)
+const clientDistDir = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(clientDistDir)) {
+  app.use(express.static(clientDistDir));
+  app.get('*', (req, res, next) => {
+    if (req.url.startsWith('/api') || req.url.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(path.resolve(clientDistDir, 'index.html'));
+  });
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

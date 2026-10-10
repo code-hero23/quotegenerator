@@ -29,25 +29,38 @@ if [ -d /etc/nginx ]; then
     sudo systemctl reload nginx 2>/dev/null || true
 fi
 
-# 2. Install Presentation Fonts (including Baskerville, Klein, Moontime, Caudex, Inter, Calibri, Segoe UI)
+# 2. Install Presentation Fonts (including Baskerville, Klein, Moontime, Caudex Bold, Inter, Calibri, Segoe UI)
 echo ""
 echo "🔤 [2/6] Installing presentation fonts into system font cache..."
 sudo mkdir -p /usr/local/share/fonts/quotegenerator
+sudo mkdir -p /usr/share/fonts/truetype/quotegenerator
 mkdir -p "$HOME/.local/share/fonts/quotegenerator"
 
 if [ -d "$APP_DIR/server/fonts" ]; then
-    echo "Copying fonts from $APP_DIR/server/fonts..."
+    echo "Copying presentation fonts from $APP_DIR/server/fonts..."
     sudo cp -f "$APP_DIR/server/fonts"/*.* /usr/local/share/fonts/quotegenerator/ || true
+    sudo cp -f "$APP_DIR/server/fonts"/*.* /usr/share/fonts/truetype/quotegenerator/ || true
     sudo chmod 644 /usr/local/share/fonts/quotegenerator/* || true
+    sudo chmod 644 /usr/share/fonts/truetype/quotegenerator/* || true
     
     cp -f "$APP_DIR/server/fonts"/*.* "$HOME/.local/share/fonts/quotegenerator/" || true
     chmod 644 "$HOME/.local/share/fonts/quotegenerator/"* || true
+
+    # Install Fontconfig alias configuration for Caudex Bold, Inter, Baskerville
+    if [ -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" ]; then
+        echo "Installing fontconfig aliases for Caudex Bold and Inter..."
+        sudo mkdir -p /etc/fonts/conf.d
+        sudo cp -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" /etc/fonts/conf.d/99-quotegenerator-fonts.conf || true
+        mkdir -p "$HOME/.config/fontconfig/conf.d"
+        cp -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" "$HOME/.config/fontconfig/conf.d/99-quotegenerator-fonts.conf" || true
+    fi
 fi
 
-echo "Installing fontconfig, metric-compatible font packages & LibreOffice Impress..."
+echo "Installing font packages (fonts-inter, fontconfig, liberation, crosextra)..."
 sudo apt-get update -qq
 sudo apt-get install -y --no-install-recommends \
     fontconfig \
+    fonts-inter \
     fonts-crosextra-carlito \
     fonts-crosextra-caladea \
     fonts-liberation \
@@ -57,6 +70,9 @@ sudo apt-get install -y --no-install-recommends \
 echo "Rebuilding font cache to register presentation fonts..."
 sudo fc-cache -f
 fc-cache -f
+
+echo "Verifying registered presentation fonts:"
+fc-list : family | grep -iE "caudex|inter|baskerville|klein|moontime" | sort -u || true
 
 # 3. Install ONLYOFFICE Document Builder for 100% Microsoft OOXML fidelity
 echo ""

@@ -130,7 +130,7 @@ export default function StepAccessoriesSnips({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-slate-800">
               {uploadedPagesCount} of {accessoryPages.length} Pages Attached
@@ -142,7 +142,7 @@ export default function StepAccessoriesSnips({
           <button
             type="button"
             onClick={handleAddPage}
-            className="btn-gold px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer rounded-xl"
+            className="btn-gold w-full sm:w-auto px-5 py-2.5 text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer rounded-xl"
           >
             <Plus className="w-5 h-5" />
             <span>Add Another Page</span>
@@ -152,7 +152,7 @@ export default function StepAccessoriesSnips({
 
       {/* Interactive Page Navigation Bar with prominent "+" Icon */}
       <div className="glass-panel p-3 bg-slate-50/80 border-slate-200 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full flex-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full flex-1">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500 pl-2 shrink-0">
             Accessory Pages ({accessoryPages.length}):
           </span>
@@ -531,17 +531,17 @@ export default function StepAccessoriesSnips({
       </button>
 
       {/* Step Navigation Actions */}
-      <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-slate-200">
         <button
           type="button"
           onClick={onBack}
-          className="btn-secondary px-6 py-3 text-sm font-semibold flex items-center gap-2 cursor-pointer"
+          className="btn-secondary w-full sm:w-auto px-6 py-3 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Quotation Snips</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <span className="text-xs text-slate-500 hidden sm:inline">
             {uploadedPagesCount > 0 
               ? `✓ ${uploadedPagesCount} accessory snip(s) configured` 
@@ -550,7 +550,7 @@ export default function StepAccessoriesSnips({
           <button
             type="button"
             onClick={onNext}
-            className="btn-gold px-8 py-3.5 text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="btn-gold w-full sm:w-auto px-8 py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <span>Next: Generate & Export</span>
             <ArrowRight className="w-4 h-4" />

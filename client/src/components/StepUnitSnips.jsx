@@ -119,7 +119,7 @@ export default function StepUnitSnips({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-slate-700">
               {uploadedPagesCount} of {unitPages.length} Uploaded
@@ -129,7 +129,7 @@ export default function StepUnitSnips({
           <button
             type="button"
             onClick={handleAddPage}
-            className="btn-gold px-5 py-2.5 text-sm font-bold flex items-center gap-2 shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer rounded-xl"
+            className="btn-gold w-full sm:w-auto px-5 py-2.5 text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer rounded-xl"
           >
             <Plus className="w-4 h-4" />
             <span>Add Unit Page</span>
@@ -143,23 +143,23 @@ export default function StepUnitSnips({
           return (
             <div
               key={page.id}
-              className="glass-panel p-5 border border-slate-200 hover:border-amber-300 transition-all duration-200 bg-white"
+              className="glass-panel p-4 sm:p-5 border border-slate-200 hover:border-amber-300 transition-all duration-200 bg-white"
             >
               {/* Card Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-100">
-                <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <span className="w-8 h-8 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/30">
                     #{index + 1}
                   </span>
 
                   {/* Editable Title */}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <input
                       type="text"
                       value={page.title}
                       onChange={(e) => handleUpdatePage(page.id, 'title', e.target.value)}
                       placeholder={`e.g. Unit ${index + 1} - Kitchen Breakdown`}
-                      className="text-base font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-amber-500 focus:outline-none w-full py-0.5 transition-colors"
+                      className="text-base font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-amber-500 focus:outline-none w-full py-0.5 transition-colors truncate"
                     />
                   </div>
                 </div>
@@ -307,17 +307,17 @@ export default function StepUnitSnips({
       </div>
 
       {/* Bottom Step Actions */}
-      <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-6 border-t border-slate-200">
         <button
           type="button"
           onClick={onBack}
-          className="btn-secondary px-6 py-3 text-sm font-semibold flex items-center gap-2 cursor-pointer"
+          className="btn-secondary w-full sm:w-auto px-6 py-3 text-sm font-semibold flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Variants</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <span className="text-xs text-slate-500 hidden sm:inline">
             {uploadedPagesCount > 0
               ? `✓ ${uploadedPagesCount} unit snip(s) ready`
@@ -326,7 +326,7 @@ export default function StepUnitSnips({
           <button
             type="button"
             onClick={onNext}
-            className="btn-gold px-8 py-3.5 text-sm font-bold flex items-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="btn-gold w-full sm:w-auto px-8 py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 cursor-pointer rounded-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <span>Next: Quotation Snips</span>
             <ArrowRight className="w-4 h-4" />

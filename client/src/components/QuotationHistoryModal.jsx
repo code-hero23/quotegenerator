@@ -56,29 +56,33 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white w-full max-w-4xl max-h-[94vh] sm:max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-2xl">
         
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-11 h-11 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold shadow-sm shadow-amber-500/20">
-              <History className="w-6 h-6" />
+        <div className="p-4 sm:p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50 gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold shadow-sm shadow-amber-500/20 shrink-0">
+              <History className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <h3 className="text-xl font-bold text-slate-900 font-['Outfit']">Quotation Vault & History</h3>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                <h3 className="text-base sm:text-xl font-bold text-slate-900 font-['Outfit'] truncate">
+                  Quotation Vault
+                </h3>
+                <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 shrink-0">
                   {totalCount} Generated
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">Track architect-generated presentations and download exported presentations (.pptx) or documents (.pdf)</p>
+              <p className="hidden sm:block text-xs text-slate-500 font-medium truncate">
+                Track architect-generated presentations and download exported presentations (.pptx) or documents (.pdf)
+              </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+            className="p-2 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-800 transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -248,13 +252,13 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                   </div>
 
                   {/* Right Column: ACTIONS (VIEW PDF + DOWNLOAD PDF + DOWNLOAD PPTX) */}
-                  <div className="flex flex-wrap lg:flex-col gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-auto shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                     {/* View PDF Button */}
                     {pdfViewUrl && (
                       <button
                         type="button"
                         onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${client.name || 'Client'} Presentation PDF`)}
-                        className="px-3.5 py-2 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors"
+                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-cyan-600" />
                         <span>👁️ View PDF</span>
@@ -266,7 +270,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                       <a
                         href={pdfUrl}
                         download
-                        className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs"
+                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5 text-cyan-600" />
                         <span>Download PDF</span>
@@ -278,7 +282,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                       <a
                         href={pptxUrl}
                         download
-                        className="px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-2xs"
+                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-2xs cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5 text-amber-700" />
                         <span>Download PPTX</span>

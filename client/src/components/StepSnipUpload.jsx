@@ -342,21 +342,21 @@ export default function StepSnipUpload({
         </div>
       )}
 
-      {/* Navigation Buttons */}
-      <div className="flex items-center justify-between pt-2">
+      {/* Navigation */}
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-2">
         <button
           type="button"
           onClick={onBack}
-          className="btn-secondary"
+          className="btn-secondary w-full sm:w-auto"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Unit Breakdown</span>
+          <span>Back to Units Snips</span>
         </button>
 
         <button
           type="button"
           onClick={onNext}
-          className="btn-gold"
+          className="btn-gold w-full sm:w-auto"
         >
           <span>Continue to Accessories & Hardware</span>
           <ArrowRight className="w-4 h-4" />

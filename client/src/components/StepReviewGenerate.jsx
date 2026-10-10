@@ -309,14 +309,14 @@ export default function StepReviewGenerate({
           </div>
 
           {/* ACTION BUTTONS (VIEW PDF + DOWNLOAD PDF + DOWNLOAD PPTX) */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full">
             
             {/* View PDF Button */}
             {pdfViewUrl && (
               <button
                 type="button"
                 onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${clientInfo.name} Quotation PDF`)}
-                className="px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-cyan-600/20 transition-all hover:-translate-y-0.5"
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-cyan-600/20 transition-all hover:-translate-y-0.5 cursor-pointer"
               >
                 <Eye className="w-4 h-4" />
                 <span>👁️ View & Preview PDF</span>
@@ -327,7 +327,7 @@ export default function StepReviewGenerate({
             <a
               href={pdfDownloadUrl}
               download
-              className="px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 border border-cyan-400 text-cyan-800 text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all hover:-translate-y-0.5"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 border border-cyan-400 text-cyan-800 text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all hover:-translate-y-0.5 cursor-pointer"
             >
               <FileText className="w-4 h-4 text-cyan-600" />
               <span>Download PDF (.pdf)</span>
@@ -337,7 +337,7 @@ export default function StepReviewGenerate({
             <a
               href={pptxDownloadUrl}
               download
-              className="btn-gold text-sm px-6 py-3.5 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+              className="btn-gold w-full sm:w-auto text-sm px-6 py-3.5 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Download PowerPoint (.pptx)</span>
@@ -349,11 +349,11 @@ export default function StepReviewGenerate({
           {pdfViewUrl && (
             <div className="mt-6 border border-slate-200 rounded-2xl overflow-hidden bg-white text-left shadow-md">
               <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-amber-600" />
-                  Live PDF Document Preview (Scroll to inspect pages)
+                <span className="font-bold text-slate-800 flex items-center gap-2 truncate">
+                  <FileText className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="truncate">Live PDF Document Preview</span>
                 </span>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 shrink-0">
                   <a
                     href={pdfViewUrl}
                     target="_blank"
@@ -366,7 +366,7 @@ export default function StepReviewGenerate({
                   <button
                     type="button"
                     onClick={() => setShowEmbeddedPdf(!showEmbeddedPdf)}
-                    className="text-slate-600 hover:text-slate-900 text-[11px] px-2.5 py-1 rounded bg-white border border-slate-200 font-semibold"
+                    className="text-slate-600 hover:text-slate-900 text-[11px] px-2.5 py-1 rounded bg-white border border-slate-200 font-semibold cursor-pointer"
                   >
                     {showEmbeddedPdf ? 'Collapse' : 'Expand'}
                   </button>
@@ -374,7 +374,7 @@ export default function StepReviewGenerate({
               </div>
 
               {showEmbeddedPdf && (
-                <div className="w-full h-[550px] bg-slate-100">
+                <div className="w-full h-[380px] sm:h-[550px] bg-slate-100">
                   <iframe
                     src={pdfViewUrl}
                     title="Live Quotation PDF Preview"
@@ -385,11 +385,11 @@ export default function StepReviewGenerate({
             </div>
           )}
 
-          <div className="pt-6 pb-2 flex justify-center">
+          <div className="pt-6 pb-2 flex justify-center w-full">
             <button
               type="button"
               onClick={onReset}
-              className="px-10 py-4.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white text-base md:text-lg font-bold shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3.5 cursor-pointer border border-amber-400/40"
+              className="w-full sm:w-auto px-10 py-4.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white text-base md:text-lg font-bold shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3.5 cursor-pointer border border-amber-400/40"
             >
               <PlusCircle className="w-6 h-6 text-white" />
               <span>Create Another Quotation</span>
@@ -397,7 +397,7 @@ export default function StepReviewGenerate({
           </div>
         </div>
       ) : (
-        <div className="glass-panel p-8 flex flex-col items-center justify-center text-center space-y-6">
+        <div className="glass-panel p-5 sm:p-8 flex flex-col items-center justify-center text-center space-y-6">
           <div className="max-w-md">
             <h3 className="text-xl font-bold text-slate-900">Ready to Compile Presentation & PDF</h3>
             <p className="text-sm text-slate-600 mt-1">
@@ -405,12 +405,12 @@ export default function StepReviewGenerate({
             </p>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={onBack}
               disabled={isGenerating}
-              className="btn-secondary"
+              className="btn-secondary w-full sm:w-auto"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back</span>
@@ -420,7 +420,7 @@ export default function StepReviewGenerate({
               type="button"
               onClick={handleStartGeneration}
               disabled={isGenerating}
-              className="btn-gold text-base px-8 py-3.5 shadow-md shadow-amber-500/20"
+              className="btn-gold w-full sm:w-auto text-base px-8 py-3.5 shadow-md shadow-amber-500/20"
             >
               {isGenerating ? (
                 <>

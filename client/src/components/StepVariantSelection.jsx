@@ -42,22 +42,22 @@ export default function StepVariantSelection({
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={selectAll}
-            className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors text-center"
           >
             Select All ({variants.length})
           </button>
           <button
             type="button"
             onClick={clearAll}
-            className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-rose-50 border border-slate-200 text-xs font-semibold text-rose-600 transition-colors"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-rose-50 border border-slate-200 text-xs font-semibold text-rose-600 transition-colors text-center"
           >
-            Clear Selection
+            Clear
           </button>
-          <div className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-xs font-bold text-amber-800">
+          <div className="w-full sm:w-auto text-center px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-xs font-bold text-amber-800">
             {selectedVariantIds.length} of {variants.length} Selected
           </div>
         </div>
@@ -164,11 +164,11 @@ export default function StepVariantSelection({
       </div>
 
       {/* Navigation Buttons */}
-      <div className="flex items-center justify-between pt-2">
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 pt-2">
         <button
           type="button"
           onClick={onBack}
-          className="btn-secondary"
+          className="btn-secondary w-full sm:w-auto"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Details</span>
@@ -178,9 +178,9 @@ export default function StepVariantSelection({
           type="button"
           onClick={onNext}
           disabled={!isValid}
-          className="btn-gold"
+          className="btn-gold w-full sm:w-auto"
         >
-          <span>Continue to Quotation Snips</span>
+          <span>Continue to Units Snips</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

@@ -217,7 +217,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
           type="button"
           onClick={onNext}
           disabled={!isValid}
-          className="btn-gold"
+          className="btn-gold w-full sm:w-auto"
         >
           <span>Continue to Variant Selection</span>
           <ArrowRight className="w-4 h-4" />

@@ -88,20 +88,20 @@ const defaultVariants = [
 const defaultUsers = [
   {
     id: 'user-sales-rep-1',
-    name: 'Mr. Abishek',
-    contactNumber: '93611 84787',
-    email: 'designs.cookscape@gmail.com',
+    name: 'Karthik Ramanathan',
+    contactNumber: '94444 88888',
+    email: 'karthik@cookscape.in',
     role: 'Senior Design Consultant'
   }
 ];
 
 const defaultClients = [
   {
-    id: 'client-aravindan-1',
-    name: 'Mr. Aravindan',
-    contactNumber: '7418414780',
-    location: 'Individual Villa Adyar',
-    email: 'webapp.cookscape@gmail.com'
+    id: 'client-sample-1',
+    name: 'Dr. Siddharth & Meera Menon',
+    contactNumber: '98401 23456',
+    location: 'Skyline Waterfront Penthouse, ECR',
+    email: 'client@sample.com'
   }
 ];
 
@@ -125,7 +125,7 @@ function loadLocalStore() {
         if (Array.isArray(parsed.quotations)) {
           parsed.quotations.forEach(q => {
             if (!q.architect) {
-              q.architect = q.user?.name || q.repInfo?.name || 'Mr. Abishek';
+              q.architect = q.user?.name || q.repInfo?.name || 'Cookscape Representative';
               updated = true;
             }
           });
@@ -214,7 +214,7 @@ const dbService = {
     const store = loadLocalStore();
     if (!store.quotations) store.quotations = [];
 
-    const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Mr. Abishek';
+    const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Cookscape Representative';
 
     const newQuote = {
       id: quoteData.id || `quote-${Date.now()}`,

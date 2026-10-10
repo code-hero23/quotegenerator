@@ -5,28 +5,28 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
 
   const loadTemplateDefaults = () => {
     setClientInfo({
-      name: 'Mr. Aravindan',
-      contact: '7418414780',
-      location: 'Individual Villa Adyar',
+      name: 'Sample Client',
+      contact: '9876543210',
+      location: 'Prestige Falcon City, Adyar',
       date: new Date().toLocaleDateString('en-GB')
     });
     setRepInfo({
-      name: 'Mr. Abishek',
-      contact: '93611 84787',
-      email: 'designs.cookscape@gmail.com'
+      name: 'Cookscape Representative',
+      contact: '98400 12345',
+      email: 'sales@cookscape.in'
     });
   };
 
   const loadSampleClient = () => {
     setClientInfo({
       name: 'Dr. Siddharth & Meera Menon',
-      contact: '+91 98401 23456',
+      contact: '98401 23456',
       location: 'Skyline Waterfront Penthouse, ECR',
       date: new Date().toLocaleDateString('en-GB')
     });
     setRepInfo({
       name: 'Karthik Ramanathan',
-      contact: '+91 94444 88888',
+      contact: '94444 88888',
       email: 'karthik@cookscape.in'
     });
   };
@@ -54,14 +54,14 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
             onClick={loadTemplateDefaults}
             className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors"
           >
-            Load Master Template Defaults
+            Load Standard Sample
           </button>
           <button
             type="button"
             onClick={loadSampleClient}
             className="px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-semibold text-amber-800 transition-colors"
           >
-            Demo Premium Client
+            Load Premium Villa Sample
           </button>
         </div>
       </div>
@@ -87,7 +87,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Mr. Aravindan / Rajesh Sharma"
+                  placeholder="e.g. Dr. Siddharth Menon / Sample Client"
                   value={clientInfo.name || ''}
                   onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
                 />
@@ -102,7 +102,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                   <input
                     type="text"
                     className="form-input pl-11"
-                    placeholder="e.g. 7418414780"
+                    placeholder="e.g. 98401 23456"
                     value={clientInfo.contact || ''}
                     onChange={(e) => setClientInfo({ ...clientInfo, contact: e.target.value })}
                   />
@@ -131,7 +131,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Individual Villa Adyar / Prestige Falcon City"
+                  placeholder="e.g. Skyline Penthouse / Prestige Falcon City"
                   value={clientInfo.location || ''}
                   onChange={(e) => setClientInfo({ ...clientInfo, location: e.target.value })}
                 />
@@ -161,7 +161,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Mr. Abishek"
+                  placeholder="e.g. Karthik Ramanathan / Sales Rep"
                   value={repInfo.name || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, name: e.target.value })}
                 />
@@ -175,7 +175,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. 93611 84787"
+                  placeholder="e.g. 94444 88888"
                   value={repInfo.contact || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, contact: e.target.value })}
                 />
@@ -189,7 +189,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="email"
                   className="form-input pl-11"
-                  placeholder="e.g. designs.cookscape@gmail.com"
+                  placeholder="e.g. karthik@cookscape.in"
                   value={repInfo.email || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, email: e.target.value })}
                 />

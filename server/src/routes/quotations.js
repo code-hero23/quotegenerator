@@ -359,7 +359,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       email: clientInfo.email || null
     });
 
-    const architectName = repInfo.name || 'Mr. Abishek';
+    const architectName = repInfo.name || 'Cookscape Representative';
 
     const pptxDownloadUrl = `/api/quotations/download/${pptxFileName}`;
     const pdfDownloadUrl = `/api/quotations/download/${pdfFileName}`;

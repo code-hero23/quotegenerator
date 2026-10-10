@@ -112,16 +112,16 @@ export default function App() {
 
   // Form State
   const [clientInfo, setClientInfo] = useState({
-    name: 'Mr. Aravindan',
-    contact: '7418414780',
-    location: 'Individual Villa Adyar',
-    date: '10/10/2026'
+    name: 'Dr. Siddharth & Meera Menon',
+    contact: '98401 23456',
+    location: 'Skyline Waterfront Penthouse, ECR',
+    date: new Date().toLocaleDateString('en-GB')
   });
 
   const [repInfo, setRepInfo] = useState({
-    name: 'Mr. Abishek',
-    contact: '93611 84787',
-    email: 'designs.cookscape@gmail.com'
+    name: 'Karthik Ramanathan',
+    contact: '94444 88888',
+    email: 'karthik@cookscape.in'
   });
 
   const [selectedVariantIds, setSelectedVariantIds] = useState([

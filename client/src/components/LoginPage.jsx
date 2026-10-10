@@ -21,7 +21,7 @@ export default function LoginPage({ onLogin }) {
 
     onLogin({
       username: trimmedUser,
-      name: trimmedUser === 'admin' ? 'Mr. Abishek' : trimmedUser,
+      name: trimmedUser === 'admin' ? 'Cookscape Representative' : trimmedUser,
       role: 'Sales Representative'
     });
   };

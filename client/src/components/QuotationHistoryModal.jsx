@@ -16,7 +16,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
   const architectsList = Array.from(
     new Set(
       quotations
-        .map(q => q.architect || q.repInfo?.name || q.user?.name || 'Mr. Abishek')
+        .map(q => q.architect || q.repInfo?.name || q.user?.name || 'Cookscape Representative')
         .filter(Boolean)
     )
   );
@@ -24,7 +24,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
   // Filter & Search Logic
   const filteredQuotations = quotations.filter((q) => {
     const client = q.client || {};
-    const architect = q.architect || q.repInfo?.name || q.user?.name || 'Mr. Abishek';
+    const architect = q.architect || q.repInfo?.name || q.user?.name || 'Cookscape Representative';
     const query = searchQuery.toLowerCase();
 
     const matchesSearch = 
@@ -168,7 +168,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
           ) : (
             filteredQuotations.map((quote) => {
               const client = quote.client || {};
-              const architect = quote.architect || quote.repInfo?.name || quote.user?.name || 'Mr. Abishek';
+              const architect = quote.architect || quote.repInfo?.name || quote.user?.name || 'Cookscape Representative';
               const variants = Array.isArray(quote.selectedVariants) 
                 ? quote.selectedVariants 
                 : (typeof quote.selectedVariants === 'string' ? JSON.parse(quote.selectedVariants || '[]') : []);

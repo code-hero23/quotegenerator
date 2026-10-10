@@ -113,9 +113,9 @@ export default function App() {
 
   // Form State
   const [clientInfo, setClientInfo] = useState({
-    name: 'Aravindan',
-    contact: '7418414780',
-    location: 'Individual Villa Adyar',
+    name: 'Dr. Siddharth & Meera Menon',
+    contact: '98401 23456',
+    location: 'Skyline Waterfront Penthouse, ECR',
     date: new Date().toLocaleDateString('en-GB')
   });
 

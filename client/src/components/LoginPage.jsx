@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck, Compass, Loader2 } from 'lucide-react';
+import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -123,77 +123,6 @@ export default function LoginPage({ onLogin }) {
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Role Demo Credential Presets */}
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2.5">
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <span>Select Account / Quick Fill</span>
-                <span className="text-[10px] lowercase font-normal text-slate-400">click auto-fill</span>
-              </div>
-              
-              {/* Admin */}
-              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                <div className="flex items-center space-x-2 text-slate-700">
-                  <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-slate-800">Admin <span className="font-mono text-slate-500 font-normal text-[11px]">(admin / admin)</span></div>
-                    <div className="text-[10px] text-slate-400">Full access & all quotes</div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername('admin');
-                    setPassword('admin');
-                  }}
-                  className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 font-semibold text-[11px] rounded-md transition-colors"
-                >
-                  Auto-fill
-                </button>
-              </div>
-
-              {/* Architect Abishek */}
-              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors border-t border-slate-200/60 pt-2">
-                <div className="flex items-center space-x-2 text-slate-700">
-                  <Compass className="w-4 h-4 text-sky-600 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-slate-800">Abishek <span className="font-mono text-slate-500 font-normal text-[11px]">(abishek / arch123)</span></div>
-                    <div className="text-[10px] text-slate-400">Feasibility Architect</div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername('abishek');
-                    setPassword('arch123');
-                  }}
-                  className="px-2.5 py-1 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 font-semibold text-[11px] rounded-md transition-colors"
-                >
-                  Auto-fill
-                </button>
-              </div>
-
-              {/* Architect Aravindan */}
-              <div className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100 transition-colors border-t border-slate-200/60 pt-2">
-                <div className="flex items-center space-x-2 text-slate-700">
-                  <Compass className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <div>
-                    <div className="font-semibold text-slate-800">Aravindan <span className="font-mono text-slate-500 font-normal text-[11px]">(aravindan / arch123)</span></div>
-                    <div className="text-[10px] text-slate-400">Feasibility Architect</div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUsername('aravindan');
-                    setPassword('arch123');
-                  }}
-                  className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 font-semibold text-[11px] rounded-md transition-colors"
-                >
-                  Auto-fill
                 </button>
               </div>
             </div>

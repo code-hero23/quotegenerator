@@ -26,7 +26,8 @@ class PythonPptxEngine {
     fs.writeFileSync(tempPayloadPath, JSON.stringify(payload, null, 2));
 
     return new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python', [scriptPath, tempPayloadPath]);
+      const pythonBin = process.env.PYTHON_PATH || (process.platform === 'win32' ? 'python' : 'python3');
+      const pythonProcess = spawn(pythonBin, [scriptPath, tempPayloadPath]);
       let stdout = '';
       let stderr = '';
 

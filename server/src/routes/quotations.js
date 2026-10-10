@@ -284,11 +284,23 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
 
         const match = file.fieldname.match(/^snip_(.+)$/);
         if (match) {
-          snips[match[1]] = file.path;
+          const rawId = match[1];
+          // Match selected variant ID (handling possible _<index> suffix e.g. snip_var_1_0)
+          let matchedVid = selectedVariantIds.find(vid => rawId === vid || rawId.startsWith(`${vid}_`));
+          const targetVid = matchedVid || rawId.replace(/_\d+$/, '');
+
+          if (!snips[targetVid]) {
+            snips[targetVid] = [];
+          } else if (!Array.isArray(snips[targetVid])) {
+            snips[targetVid] = [snips[targetVid]];
+          }
+          snips[targetVid].push(file.path);
         } else {
           for (const vid of selectedVariantIds) {
             if (file.originalname.includes(vid) || file.fieldname.includes(vid)) {
-              snips[vid] = file.path;
+              if (!snips[vid]) snips[vid] = [];
+              else if (!Array.isArray(snips[vid])) snips[vid] = [snips[vid]];
+              snips[vid].push(file.path);
             }
           }
         }

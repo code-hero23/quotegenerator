@@ -312,6 +312,123 @@ class PptxEngine {
       }
     }
 
+    // Normalize snips: ensure each variant maps to an array of file paths or Buffers
+    const normalizedSnips = {};
+    if (snips && typeof snips === 'object') {
+      for (const [k, v] of Object.entries(snips)) {
+        if (Array.isArray(v)) {
+          normalizedSnips[String(k)] = v.filter(Boolean);
+        } else if (v) {
+          normalizedSnips[String(k)] = [v];
+        }
+      }
+    }
+
+    // 2.7 Insert Additional Quotation Snip Slides for variants with multiple snips
+    for (let vIdx = 0; vIdx < allVariants.length; vIdx++) {
+      const v = allVariants[vIdx];
+      const vId = String(v.id);
+      if (!selectedVariantIdSet.has(vId)) continue;
+
+      let indices = v.slideIndices;
+      if (typeof indices === 'string') {
+        try { indices = JSON.parse(indices); } catch (e) { indices = []; }
+      }
+      if (!Array.isArray(indices) || indices.length < 3) continue;
+
+      const quoteSlideNum = Number(indices[2]);
+      const variantSnipList = normalizedSnips[vId] || [];
+
+      if (variantSnipList.length > 1) {
+        // Find position of the variant's quotation slide in keptSlides
+        const baseKeptIdx = keptSlides.findIndex(s => s.displayIndex === quoteSlideNum);
+        if (baseKeptIdx === -1) continue;
+
+        const baseSlidePath = `ppt/slides/slide${quoteSlideNum}.xml`;
+        const baseSlideXml = await zip.file(baseSlidePath).async('text');
+
+        for (let sIdx = 1; sIdx < variantSnipList.length; sIdx++) {
+          const extraSnipFile = variantSnipList[sIdx];
+          const safeVId = vId.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const extraSlideTarget = `slides/slide_var_${safeVId}_snip_${sIdx + 1}.xml`;
+          const extraFullZipPath = `ppt/${extraSlideTarget}`;
+          const extraSlideRelsZipPath = `ppt/slides/_rels/${path.basename(extraSlideTarget)}.rels`;
+          const extraRId = `rIdVarSnip_${vIdx}_${sIdx + 1}`;
+          const extraSldId = String(60000 + vIdx * 100 + sIdx);
+
+          let extraXml = baseSlideXml;
+          extraXml = extraXml.replace(
+            /<a:t>Quotation<\/a:t>/,
+            `<a:t>Quotation (Page ${sIdx + 1})</a:t>`
+          );
+
+          let extraBuffer = null;
+          let extraExt = 'png';
+          if (Buffer.isBuffer(extraSnipFile)) {
+            extraBuffer = extraSnipFile;
+          } else if (typeof extraSnipFile === 'string' && fs.existsSync(extraSnipFile)) {
+            extraBuffer = fs.readFileSync(extraSnipFile);
+            extraExt = path.extname(extraSnipFile).replace('.', '') || 'png';
+          }
+
+          let extraRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
+
+          if (extraBuffer) {
+            const mediaFileName = `snip_var_${safeVId}_${sIdx + 1}_${Date.now()}.${extraExt}`;
+            zip.file(`ppt/media/${mediaFileName}`, extraBuffer);
+
+            const snipRelId = `rIdVarSnipImg_${vIdx}_${sIdx + 1}`;
+            const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
+            extraRelsXml = extraRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
+
+            const picXml = `
+              <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                <p:nvPicPr>
+                  <p:cNvPr id="${18000 + vIdx * 100 + sIdx}" name="QuotationSnip_${safeVId}_${sIdx + 1}"/>
+                  <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                  <p:nvPr/>
+                </p:nvPicPr>
+                <p:blipFill>
+                  <a:blip r:embed="${snipRelId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </p:blipFill>
+                <p:spPr>
+                  <a:xfrm>
+                    <a:off x="750000" y="2600000"/>
+                    <a:ext cx="8500000" cy="9500000"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </p:spPr>
+              </p:pic>
+            `.trim();
+            extraXml = extraXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+          }
+
+          zip.file(extraFullZipPath, extraXml);
+          zip.file(extraSlideRelsZipPath, extraRelsXml);
+
+          updatedContentTypes = updatedContentTypes.replace(
+            '</Types>',
+            `<Override PartName="/ppt/${extraSlideTarget}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`
+          );
+
+          updatedPresRelsXml = updatedPresRelsXml.replace(
+            '</Relationships>',
+            `<Relationship Id="${extraRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="${extraSlideTarget}"/></Relationships>`
+          );
+
+          keptSlides.splice(baseKeptIdx + sIdx, 0, {
+            displayIndex: quoteSlideNum + (sIdx * 0.01),
+            baseSlideNum: quoteSlideNum,
+            id: extraSldId,
+            rId: extraRId,
+            target: extraSlideTarget,
+            fullZipPath: extraFullZipPath
+          });
+        }
+      }
+    }
+
     // 3. Update ppt/presentation.xml: keep only kept & inserted slides in <p:sldIdLst>
     const newSldIdXml = keptSlides.map(s => `<p:sldId id="${s.id}" r:id="${s.rId}"/>`).join('');
     const updatedPresXml = presXmlStr.replace(
@@ -392,7 +509,7 @@ class PptxEngine {
 
       // Update slide number if this slide has a slide number tag
       // Master template has <a:t>X</a:t> where X is slide.displayIndex
-      const originalNum = slide.displayIndex;
+      const originalNum = slide.baseSlideNum || slide.displayIndex;
       const numRegex = new RegExp(`<a:t>\\s*${originalNum}\\s*<\\/a:t>`, 'g');
       slideXml = slideXml.replace(numRegex, `<a:t>${newSlideNumber}</a:t>`);
 
@@ -415,8 +532,8 @@ class PptxEngine {
 
       // Check if this slide is a variant quotation slide and has an uploaded snip
       const variantIdForSlide = variantQuotationSlideMap.get(slide.displayIndex);
-      if (variantIdForSlide && snips[variantIdForSlide]) {
-        const snipFile = snips[variantIdForSlide];
+      if (variantIdForSlide && normalizedSnips[variantIdForSlide] && normalizedSnips[variantIdForSlide].length > 0) {
+        const snipFile = normalizedSnips[variantIdForSlide][0];
         let snipBuffer = null;
         let snipExt = 'png';
 
@@ -428,7 +545,8 @@ class PptxEngine {
         }
 
         if (snipBuffer) {
-          const mediaFileName = `snip_var_${variantIdForSlide}_${Date.now()}.${snipExt}`;
+          const safeVId = variantIdForSlide.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const mediaFileName = `snip_var_${safeVId}_1_${Date.now()}.${snipExt}`;
           const mediaZipPath = `ppt/media/${mediaFileName}`;
           zip.file(mediaZipPath, snipBuffer);
 
@@ -442,7 +560,7 @@ class PptxEngine {
             slideRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`;
           }
 
-          const snipRelId = `rIdSnip_${variantIdForSlide}`;
+          const snipRelId = `rIdSnip_${safeVId}_1`;
           const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
           slideRelsXml = slideRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
           zip.file(slideRelsPath, slideRelsXml);
@@ -453,7 +571,7 @@ class PptxEngine {
           const picXml = `
             <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
               <p:nvPicPr>
-                <p:cNvPr id="${9000 + newSlideNumber}" name="QuotationSnip_${variantIdForSlide}"/>
+                <p:cNvPr id="${9000 + newSlideNumber}" name="QuotationSnip_${safeVId}_1"/>
                 <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
                 <p:nvPr/>
               </p:nvPicPr>

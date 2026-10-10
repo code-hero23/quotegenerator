@@ -34,7 +34,22 @@ export default function StepReviewGenerate({
       : (typeof v.slideIndices === 'string' ? JSON.parse(v.slideIndices || '[]') : []);
     subtractedSlidesCount += indices.length;
   });
-  const estimatedOutputSlides = totalMasterSlides - subtractedSlidesCount;
+
+  // Calculate additional slides added by extra snips (beyond primary snip)
+  let extraVariantSlides = 0;
+  selectedVariants.forEach(v => {
+    const snips = snipFiles[v.id];
+    const count = Array.isArray(snips) 
+      ? snips.filter(s => s && (s.file || s instanceof File)).length 
+      : (snips ? 1 : 0);
+    if (count > 1) {
+      extraVariantSlides += (count - 1);
+    }
+  });
+
+  const extraUnitSlides = Array.isArray(unitPages) ? unitPages.filter(p => p.file).length : 0;
+  const extraAccSlides = Array.isArray(accessoryPages) ? accessoryPages.filter(p => p.file).length : 0;
+  const estimatedOutputSlides = totalMasterSlides - subtractedSlidesCount + extraUnitSlides + extraAccSlides + extraVariantSlides;
 
   const handleStartGeneration = async () => {
     const res = await onGenerate(engineType);
@@ -109,22 +124,35 @@ export default function StepReviewGenerate({
           </div>
 
           <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
-            {selectedVariants.map(v => (
-              <div key={v.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{v.name}</p>
-                  <p className="text-[11px] text-slate-500">{v.category}</p>
+            {selectedVariants.map(v => {
+              const vSnips = Array.isArray(snipFiles[v.id]) 
+                ? snipFiles[v.id].filter(s => s && (s.file || s instanceof File))
+                : (snipFiles[v.id] ? [snipFiles[v.id]] : []);
+              const snipCount = vSnips.length;
+
+              return (
+                <div key={v.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">{v.name}</p>
+                    <p className="text-[11px] text-slate-500">{v.category}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                      {v.specs?.warranty || 'Approved'}
+                    </span>
+                    {snipCount > 0 ? (
+                      <span className="block text-[10px] text-emerald-700 font-bold mt-1">
+                        ✓ {snipCount} {snipCount === 1 ? 'Snip' : 'Snips'} attached
+                      </span>
+                    ) : (
+                      <span className="block text-[10px] text-slate-400 font-medium mt-1">
+                        Default Quotation Slide
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded">
-                    {v.specs?.warranty || 'Approved'}
-                  </span>
-                  {snipFiles[v.id] && (
-                    <span className="block text-[10px] text-emerald-700 font-bold mt-1">✓ Snip attached</span>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between">

@@ -227,10 +227,20 @@ export default function App() {
       formData.append('selectedVariantIds', JSON.stringify(selectedVariantIds));
       formData.append('engineType', engineType);
 
-      // Append snip images
-      Object.entries(snipFiles).forEach(([variantId, file]) => {
-        if (file) {
-          formData.append(`snip_${variantId}`, file);
+      // Append snip images (supports multiple snips per variant)
+      Object.entries(snipFiles).forEach(([variantId, snipsOrFile]) => {
+        if (Array.isArray(snipsOrFile)) {
+          snipsOrFile.forEach((item, index) => {
+            const file = item?.file || (item instanceof File ? item : null);
+            if (file) {
+              formData.append(`snip_${variantId}_${index}`, file);
+            }
+          });
+        } else if (snipsOrFile) {
+          const file = snipsOrFile?.file || (snipsOrFile instanceof File ? snipsOrFile : null);
+          if (file) {
+            formData.append(`snip_${variantId}_0`, file);
+          }
         }
       });
 

@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
-import { 
-  Plus, Trash2, UploadCloud, Image as ImageIcon, 
-  ArrowLeft, ArrowRight, CheckCircle2, Eye, X, Layers, Sparkles 
+import {
+  Plus, Trash2, UploadCloud, Image as ImageIcon,
+  ArrowLeft, ArrowRight, CheckCircle2, Eye, X, Layers, Sparkles
 } from 'lucide-react';
 
 const COMMON_CATEGORIES = [
@@ -101,7 +101,7 @@ export default function StepUnitSnips({
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      
+
       {/* Top Banner & Action Header */}
       <div className="glass-panel p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-amber-200/60 bg-gradient-to-r from-amber-50/40 via-white to-amber-50/20">
         <div>
@@ -141,8 +141,8 @@ export default function StepUnitSnips({
       <div className="space-y-5">
         {unitPages.map((page, index) => {
           return (
-            <div 
-              key={page.id} 
+            <div
+              key={page.id}
               className="glass-panel p-5 border border-slate-200 hover:border-amber-300 transition-all duration-200 bg-white"
             >
               {/* Card Header */}
@@ -151,7 +151,7 @@ export default function StepUnitSnips({
                   <span className="w-8 h-8 rounded-lg bg-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/30">
                     #{index + 1}
                   </span>
-                  
+
                   {/* Editable Title */}
                   <div className="flex-1">
                     <input
@@ -190,16 +190,16 @@ export default function StepUnitSnips({
 
               {/* Upload Dropzone & Details */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                
+
                 {/* Image Upload Area (8 cols on lg) */}
                 <div className="lg:col-span-8">
                   {page.file ? (
                     // Uploaded State with Preview
                     <div className="relative border-2 border-emerald-300 rounded-xl p-3 bg-emerald-50/30 flex flex-col sm:flex-row items-center gap-4">
                       <div className="w-full sm:w-48 h-32 rounded-lg overflow-hidden bg-slate-900/5 shrink-0 flex items-center justify-center border border-slate-200">
-                        <img 
-                          src={page.previewUrl} 
-                          alt={page.title} 
+                        <img
+                          src={page.previewUrl}
+                          alt={page.title}
                           className="w-full h-full object-contain"
                         />
                       </div>
@@ -214,7 +214,7 @@ export default function StepUnitSnips({
                         <p className="text-[11px] text-slate-500">
                           {(page.file.size / 1024).toFixed(1)} KB • Will be inserted into presentation
                         </p>
-                        
+
                         <div className="flex items-center gap-2 pt-2">
                           <button
                             type="button"
@@ -319,8 +319,8 @@ export default function StepUnitSnips({
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500 hidden sm:inline">
-            {uploadedPagesCount > 0 
-              ? `✓ ${uploadedPagesCount} unit snip(s) ready` 
+            {uploadedPagesCount > 0
+              ? `✓ ${uploadedPagesCount} unit snip(s) ready`
               : 'Optional • Proceed whenever ready'}
           </span>
           <button

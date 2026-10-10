@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+*.env
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+client/dist/
+
+# Uploads & Generated files
+server/uploads/generated/*
+!server/uploads/generated/.gitkeep
+server/uploads/snips/*
+!server/uploads/snips/.gitkeep
+
+# Backup presentation files
+*.backup.pptx
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor & OS files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

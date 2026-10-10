@@ -1,0 +1,70 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String      @id @default(uuid())
+  name          String
+  contactNumber String      @map("contact_number")
+  email         String?
+  role          String      @default("Sales Representative")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  quotations    Quotation[]
+
+  @@map("users")
+}
+
+model Client {
+  id            String      @id @default(uuid())
+  name          String
+  contactNumber String      @map("contact_number")
+  location      String
+  email         String?
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  quotations    Quotation[]
+
+  @@map("clients")
+}
+
+model Variant {
+  id           String   @id @default(uuid())
+  name         String
+  category     String   @default("Modular Interior")
+  description  String?
+  price        Float?
+  specs        Json?
+  slideIndices Json     @map("slide_indices") // e.g. [7, 8, 9] in Master-Template
+  isDefault    Boolean  @default(false) @map("is_default")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("variants")
+}
+
+model Quotation {
+  id               String   @id @default(uuid())
+  quotationNumber  String   @unique @map("quotation_number")
+  clientId         String   @map("client_id")
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date             DateTime @default(now())
+  selectedVariants Json     @map("selected_variants") // Array of variant objects or ids
+  filePath         String   @map("file_path")
+  fileSize         Int?     @map("file_size")
+  downloadUrl      String?  @map("download_url")
+  pdfPath          String?  @map("pdf_path")
+  pdfFileSize      Int?     @map("pdf_file_size")
+  pdfDownloadUrl   String?  @map("pdf_download_url")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("quotations")
+}

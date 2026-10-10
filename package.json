@@ -1,0 +1,11 @@
+{
+  "name": "cookscape-quotation-generator",
+  "version": "1.0.0",
+  "description": "PERN stack quotation generator with PowerPoint Template Subtraction Architecture",
+  "scripts": {
+    "start:server": "cd server && npm start",
+    "start:client": "cd client && npm run dev",
+    "build:client": "cd client && npm run build",
+    "test:pptx": "cd server && npm run test:pptx"
+  }
+}

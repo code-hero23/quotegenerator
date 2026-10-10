@@ -1,0 +1,855 @@
+{
+  "variants": [
+    {
+      "id": "var-surabhi-ll-elite",
+      "name": "SURABHI - LL ELITE",
+      "category": "Premium Marine Interior",
+      "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+      "price": 345000,
+      "specs": {
+        "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+        "carcassFinish": "Frosty White",
+        "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+        "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+        "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+        "warranty": "10 Years Warranty"
+      },
+      "slideIndices": [
+        7,
+        8,
+        9
+      ],
+      "isDefault": true
+    },
+    {
+      "id": "var-capricoast-matte",
+      "name": "CAPRICOAST MATTE",
+      "category": "Ultra Matte Contemporary",
+      "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+      "price": 395000,
+      "specs": {
+        "carcassMaterial": "GREENPLY BWP 710 Grade",
+        "carcassFinish": "Frosty White / Grey Linum",
+        "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+        "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+        "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+        "warranty": "12 Years Warranty"
+      },
+      "slideIndices": [
+        10,
+        11,
+        12
+      ],
+      "isDefault": true
+    },
+    {
+      "id": "var-capricost-glossy",
+      "name": "CAPRICOST GLOSSY",
+      "category": "High Gloss Elegance",
+      "description": "High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.",
+      "price": 430000,
+      "specs": {
+        "carcassMaterial": "GREENPLY BWP 710 Grade",
+        "carcassFinish": "Frosty White",
+        "shutterFinish": "GLOSSY Finish Laminate (HGL)",
+        "shutterMaterial": "High Density High Moisture Resistant Boards (HDHMR)",
+        "hardware": "EBCO 12kg Hinges, CNR 2-way track, BLUM/HETTICH 15kg lifters",
+        "warranty": "12 Years Warranty"
+      },
+      "slideIndices": [
+        13,
+        14,
+        15
+      ],
+      "isDefault": false
+    },
+    {
+      "id": "var-elegant-surabhi",
+      "name": "ELEGANT SURABHI",
+      "category": "Architectural Grade Luxury",
+      "description": "BWP 710 Gurjan Ply with super matte 1mm branded laminate and Grade 1 soft-closing hardware.",
+      "price": 520000,
+      "specs": {
+        "carcassMaterial": "GREENPLY BWP 710 Grade with both side Laminate",
+        "carcassFinish": "Premium Frosty Linum",
+        "shutterFinish": "SUPER Matte Finish Laminate - 1mm (Merino LAM SF / RH)",
+        "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+        "hardware": "HETTICH | EBCO Soft-Close, Anabond Hot Melt Bonding, E3/Rehau edge-banding",
+        "warranty": "15 Years Comprehensive Warranty"
+      },
+      "slideIndices": [
+        16,
+        17,
+        18
+      ],
+      "isDefault": false
+    },
+    {
+      "id": "var-4x-tuff-gloss",
+      "name": "4X TUFF GLOSS",
+      "category": "Scratch & Stain Proof Signature",
+      "description": "Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.",
+      "price": 580000,
+      "specs": {
+        "carcassMaterial": "GREENPLY BWP 710 Grade",
+        "carcassFinish": "Frosty White Deluxe",
+        "shutterFinish": "GLOSSY - SCRATCH & STAIN PROOF (Merino MR+ / Royal Touche)",
+        "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+        "hardware": "Grade 1 Soft closing, HETTICH Kitchen Accessories, EBCO 12kg hinges",
+        "warranty": "15 Years Scratch-Proof Warranty"
+      },
+      "slideIndices": [
+        19,
+        20,
+        21
+      ],
+      "isDefault": false
+    }
+  ],
+  "users": [
+    {
+      "id": "user-sales-rep-1",
+      "name": "Mr. Abishek",
+      "contactNumber": "93611 84787",
+      "email": "designs.cookscape@gmail.com",
+      "role": "Senior Design Consultant"
+    }
+  ],
+  "clients": [
+    {
+      "id": "client-1791577635305",
+      "name": "Mr. Vignesh & Family",
+      "contactNumber": "9876543210",
+      "location": "Anna Nagar, Chennai",
+      "email": "vignesh@example.com",
+      "createdAt": "2026-10-09T20:27:15.305Z"
+    },
+    {
+      "id": "client-1791574030714",
+      "name": "Kavitha & Dr. Anand",
+      "contactNumber": "+91 97890 12345",
+      "location": "Oceanic Villa, ECR Beach Road",
+      "email": "anand.kavitha@gmail.com",
+      "createdAt": "2026-10-09T19:27:10.714Z"
+    },
+    {
+      "id": "client-1791572831753",
+      "name": "Mr. Karthik",
+      "contactNumber": "7418414789",
+      "location": "Individual Villa Porur",
+      "email": "webapp.cookscape@gmail.com",
+      "createdAt": "2026-10-09T19:07:11.753Z"
+    },
+    {
+      "id": "client-1791572105855",
+      "name": "Mrs. Sunita & Rajesh Nair",
+      "contactNumber": "+91 99887 76655",
+      "location": "Adyar Villa Complex, Chennai",
+      "email": "sunita.nair@gmail.com",
+      "createdAt": "2026-10-09T18:55:05.855Z"
+    },
+    {
+      "id": "client-aravindan-1",
+      "name": "Mr. Aravindan",
+      "contactNumber": "7418414780",
+      "location": "Individual Villa Adyar",
+      "email": null
+    }
+  ],
+  "quotations": [
+    {
+      "id": "quote-1791615575190",
+      "quotationNumber": "QT-549163",
+      "clientId": "client-aravindan-1",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-10T06:59:35.188Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricost-glossy",
+          "name": "CAPRICOST GLOSSY",
+          "category": "High Gloss Elegance",
+          "description": "High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.",
+          "price": 430000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "GLOSSY Finish Laminate (HGL)",
+            "shutterMaterial": "High Density High Moisture Resistant Boards (HDHMR)",
+            "hardware": "EBCO 12kg Hinges, CNR 2-way track, BLUM/HETTICH 15kg lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            13,
+            14,
+            15
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-549163.pptx",
+      "fileSize": 47794083,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-549163.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-549163.pdf",
+      "pdfFileSize": 3650882,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-549163.pdf",
+      "createdAt": "2026-10-10T06:59:35.190Z",
+      "client": {
+        "id": "client-aravindan-1",
+        "name": "Mr. Aravindan",
+        "contactNumber": "7418414780",
+        "location": "Individual Villa Adyar",
+        "email": null
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791608384719",
+      "quotationNumber": "QT-357796",
+      "clientId": "client-aravindan-1",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-10T04:59:44.713Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-357796.pptx",
+      "fileSize": 41690626,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-357796.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-357796.pdf",
+      "pdfFileSize": 3014006,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-357796.pdf",
+      "createdAt": "2026-10-10T04:59:44.719Z",
+      "client": {
+        "id": "client-aravindan-1",
+        "name": "Mr. Aravindan",
+        "contactNumber": "7418414780",
+        "location": "Individual Villa Adyar",
+        "email": "webapp.cookscape@gmail.com"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791577635309",
+      "quotationNumber": "QT-620689",
+      "clientId": "client-1791577635305",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T20:27:15.307Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-4x-tuff-gloss",
+          "name": "4X TUFF GLOSS",
+          "category": "Scratch & Stain Proof Signature",
+          "description": "Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.",
+          "price": 580000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White Deluxe",
+            "shutterFinish": "GLOSSY - SCRATCH & STAIN PROOF (Merino MR+ / Royal Touche)",
+            "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+            "hardware": "Grade 1 Soft closing, HETTICH Kitchen Accessories, EBCO 12kg hinges",
+            "warranty": "15 Years Scratch-Proof Warranty"
+          },
+          "slideIndices": [
+            19,
+            20,
+            21
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Vignesh___Family_10_10_2026_QT-620689.pptx",
+      "fileSize": 41690612,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Vignesh___Family_10_10_2026_QT-620689.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Vignesh___Family_10_10_2026_QT-620689.pdf",
+      "pdfFileSize": 3062833,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Vignesh___Family_10_10_2026_QT-620689.pdf",
+      "createdAt": "2026-10-09T20:27:15.309Z",
+      "client": {
+        "id": "client-1791577635305",
+        "name": "Mr. Vignesh & Family",
+        "contactNumber": "9876543210",
+        "location": "Anna Nagar, Chennai",
+        "email": "vignesh@example.com",
+        "createdAt": "2026-10-09T20:27:15.305Z"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791575726974",
+      "quotationNumber": "QT-722029",
+      "clientId": "client-aravindan-1",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T19:55:26.973Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-4x-tuff-gloss",
+          "name": "4X TUFF GLOSS",
+          "category": "Scratch & Stain Proof Signature",
+          "description": "Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.",
+          "price": 580000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White Deluxe",
+            "shutterFinish": "GLOSSY - SCRATCH & STAIN PROOF (Merino MR+ / Royal Touche)",
+            "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+            "hardware": "Grade 1 Soft closing, HETTICH Kitchen Accessories, EBCO 12kg hinges",
+            "warranty": "15 Years Scratch-Proof Warranty"
+          },
+          "slideIndices": [
+            19,
+            20,
+            21
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-722029.pptx",
+      "fileSize": 41697694,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-722029.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-722029.pdf",
+      "pdfFileSize": 3310212,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-722029.pdf",
+      "createdAt": "2026-10-09T19:55:26.974Z",
+      "client": {
+        "id": "client-aravindan-1",
+        "name": "Mr. Aravindan",
+        "contactNumber": "7418414780",
+        "location": "Individual Villa Adyar",
+        "email": "webapp.cookscape@gmail.com"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791575662595",
+      "quotationNumber": "QT-658025",
+      "clientId": "client-aravindan-1",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T19:54:22.592Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-4x-tuff-gloss",
+          "name": "4X TUFF GLOSS",
+          "category": "Scratch & Stain Proof Signature",
+          "description": "Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.",
+          "price": 580000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White Deluxe",
+            "shutterFinish": "GLOSSY - SCRATCH & STAIN PROOF (Merino MR+ / Royal Touche)",
+            "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+            "hardware": "Grade 1 Soft closing, HETTICH Kitchen Accessories, EBCO 12kg hinges",
+            "warranty": "15 Years Scratch-Proof Warranty"
+          },
+          "slideIndices": [
+            19,
+            20,
+            21
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-658025.pptx",
+      "fileSize": 41697694,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-658025.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-658025.pdf",
+      "pdfFileSize": 3310212,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-658025.pdf",
+      "createdAt": "2026-10-09T19:54:22.595Z",
+      "client": {
+        "id": "client-aravindan-1",
+        "name": "Mr. Aravindan",
+        "contactNumber": "7418414780",
+        "location": "Individual Villa Adyar",
+        "email": "webapp.cookscape@gmail.com"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791574030719",
+      "quotationNumber": "QT-026583",
+      "clientId": "client-1791574030714",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T19:27:10.717Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricost-glossy",
+          "name": "CAPRICOST GLOSSY",
+          "category": "High Gloss Elegance",
+          "description": "High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.",
+          "price": 430000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "GLOSSY Finish Laminate (HGL)",
+            "shutterMaterial": "High Density High Moisture Resistant Boards (HDHMR)",
+            "hardware": "EBCO 12kg Hinges, CNR 2-way track, BLUM/HETTICH 15kg lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            13,
+            14,
+            15
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Kavitha___Dr__Anand_10_10_2026_QT-026583.pptx",
+      "fileSize": 41690655,
+      "downloadUrl": "/api/quotations/download/Quote_Kavitha___Dr__Anand_10_10_2026_QT-026583.pptx",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Kavitha___Dr__Anand_10_10_2026_QT-026583.pdf",
+      "pdfFileSize": 3026632,
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Kavitha___Dr__Anand_10_10_2026_QT-026583.pdf",
+      "createdAt": "2026-10-09T19:27:10.719Z",
+      "client": {
+        "id": "client-1791574030714",
+        "name": "Kavitha & Dr. Anand",
+        "contactNumber": "+91 97890 12345",
+        "location": "Oceanic Villa, ECR Beach Road",
+        "email": "anand.kavitha@gmail.com",
+        "createdAt": "2026-10-09T19:27:10.714Z"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      }
+    },
+    {
+      "id": "quote-1791572831762",
+      "quotationNumber": "QT-826558",
+      "clientId": "client-1791572831753",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T19:07:11.761Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Karthik_10_10_2026_QT-826558.pptx",
+      "fileSize": 43563205,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Karthik_10_10_2026_QT-826558.pptx",
+      "createdAt": "2026-10-09T19:07:11.762Z",
+      "client": {
+        "id": "client-1791572831753",
+        "name": "Mr. Karthik",
+        "contactNumber": "7418414789",
+        "location": "Individual Villa Porur",
+        "email": "webapp.cookscape@gmail.com",
+        "createdAt": "2026-10-09T19:07:11.753Z"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      },
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Karthik_10_10_2026_QT-826558.pdf",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Karthik_10_10_2026_QT-826558.pdf",
+      "pdfFileSize": 3146286
+    },
+    {
+      "id": "quote-1791572670553",
+      "quotationNumber": "QT-665455",
+      "clientId": "client-aravindan-1",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T19:04:30.552Z",
+      "selectedVariants": [
+        {
+          "id": "var-surabhi-ll-elite",
+          "name": "SURABHI - LL ELITE",
+          "category": "Premium Marine Interior",
+          "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
+          "price": 345000,
+          "specs": {
+            "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
+            "carcassFinish": "Frosty White",
+            "shutterFinish": "Laminate Solid Colors, Prelam Aqua Shield-MDF-Clr-BSL",
+            "shutterMaterial": "Hydroguard Plus HDF, Prelam Aqua Shield-MDF-Clr-BSL, Commercial Ply",
+            "hardware": "Dual Switch EBCO, Tyrox Nickel Brush handles & accessories",
+            "warranty": "10 Years Warranty"
+          },
+          "slideIndices": [
+            7,
+            8,
+            9
+          ],
+          "isDefault": true
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-665455.pptx",
+      "fileSize": 41749479,
+      "downloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-665455.pptx",
+      "createdAt": "2026-10-09T19:04:30.553Z",
+      "client": {
+        "id": "client-aravindan-1",
+        "name": "Mr. Aravindan",
+        "contactNumber": "7418414780",
+        "location": "Individual Villa Adyar",
+        "email": "webapp.cookscape@gmail.com"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      },
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-665455.pdf",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-665455.pdf",
+      "pdfFileSize": 2829022
+    },
+    {
+      "id": "quote-1791572105864",
+      "quotationNumber": "QT-101847",
+      "clientId": "client-1791572105855",
+      "userId": "user-sales-rep-1",
+      "date": "2026-10-09T18:55:05.861Z",
+      "selectedVariants": [
+        {
+          "id": "var-capricoast-matte",
+          "name": "CAPRICOAST MATTE",
+          "category": "Ultra Matte Contemporary",
+          "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
+          "price": 395000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade",
+            "carcassFinish": "Frosty White / Grey Linum",
+            "shutterFinish": "Matte Finish Laminate (Catch / New Mica)",
+            "shutterMaterial": "HDHMR / GREENPLY BWP 710 Grade",
+            "hardware": "EBCO Soft-Close Hinges, CNR Sliding Tracks, Hettich/Blum 15kg Lifters",
+            "warranty": "12 Years Warranty"
+          },
+          "slideIndices": [
+            10,
+            11,
+            12
+          ],
+          "isDefault": true
+        },
+        {
+          "id": "var-elegant-surabhi",
+          "name": "ELEGANT SURABHI",
+          "category": "Architectural Grade Luxury",
+          "description": "BWP 710 Gurjan Ply with super matte 1mm branded laminate and Grade 1 soft-closing hardware.",
+          "price": 520000,
+          "specs": {
+            "carcassMaterial": "GREENPLY BWP 710 Grade with both side Laminate",
+            "carcassFinish": "Premium Frosty Linum",
+            "shutterFinish": "SUPER Matte Finish Laminate - 1mm (Merino LAM SF / RH)",
+            "shutterMaterial": "BWP 710 Grade GURJAN Ply / GREENPLY HDHMR",
+            "hardware": "HETTICH | EBCO Soft-Close, Anabond Hot Melt Bonding, E3/Rehau edge-banding",
+            "warranty": "15 Years Comprehensive Warranty"
+          },
+          "slideIndices": [
+            16,
+            17,
+            18
+          ],
+          "isDefault": false
+        }
+      ],
+      "filePath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pptx",
+      "fileSize": 41691700,
+      "downloadUrl": "/api/quotations/download/Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pptx",
+      "createdAt": "2026-10-09T18:55:05.864Z",
+      "client": {
+        "id": "client-1791572105855",
+        "name": "Mrs. Sunita & Rajesh Nair",
+        "contactNumber": "+91 99887 76655",
+        "location": "Adyar Villa Complex, Chennai",
+        "email": "sunita.nair@gmail.com",
+        "createdAt": "2026-10-09T18:55:05.855Z"
+      },
+      "user": {
+        "id": "user-sales-rep-1",
+        "name": "Mr. Abishek",
+        "contactNumber": "93611 84787",
+        "email": "designs.cookscape@gmail.com",
+        "role": "Senior Design Consultant"
+      },
+      "pdfDownloadUrl": "/api/quotations/download/Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pdf",
+      "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pdf",
+      "pdfFileSize": 2945101
+    }
+  ]
+}

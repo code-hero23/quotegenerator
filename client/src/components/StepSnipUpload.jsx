@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   UploadCloud, X, ArrowLeft, ArrowRight, CheckCircle2,
   FileImage, Plus, Trash2, RefreshCw, Eye, Sparkles, Layers,
-  FileText, AlertCircle
+  FileText, AlertCircle, Copy, Clipboard, FileSpreadsheet
 } from 'lucide-react';
+import { hasTableClipboardData, parseClipboardTable, convertTableToImageFile } from '../utils/tableToImage';
 
 export default function StepSnipUpload({
   variants = [],
@@ -17,6 +18,15 @@ export default function StepSnipUpload({
   const fileInputRefs = useRef({});
   const replaceInputRefs = useRef({});
   const [activePreview, setActivePreview] = useState(null); // { url, title }
+  const [activeVariantId, setActiveVariantId] = useState(selectedVariants[0]?.id || null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(prev => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
 
   // Normalize snips for a variant to an array of objects
   const getSnips = (variantId) => {
@@ -93,6 +103,84 @@ export default function StepSnipUpload({
     });
   };
 
+  // Copy snip image to clipboard (Ctrl+C helper)
+  const handleCopySnip = async (snip, variant) => {
+    if (!snip.file) return;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ [snip.file.type || 'image/png']: snip.file })
+        ]);
+        showToast(`📋 Copied snip for "${variant.name}" to clipboard!`);
+      } else {
+        showToast('⚠️ Clipboard copy is not supported in this browser', 'error');
+      }
+    } catch (err) {
+      console.warn('Clipboard copy error:', err);
+      showToast('⚠️ Could not copy image to clipboard', 'error');
+    }
+  };
+
+  // Clipboard Paste listener (Ctrl+V for Screenshots and Excel data)
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      // Don't intercept when user is typing in standard text inputs
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.type !== 'file') {
+        return;
+      }
+
+      if (!e.clipboardData) return;
+
+      const targetVariant = selectedVariants.find(v => v.id === activeVariantId) ||
+                            selectedVariants.find(v => getSnips(v.id).length === 0) ||
+                            selectedVariants[0];
+
+      if (!targetVariant) return;
+
+      // 1. Check for image in clipboard
+      const items = e.clipboardData.items || [];
+      let imageFile = null;
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+
+      if (imageFile) {
+        e.preventDefault();
+        handleAddFiles(targetVariant.id, [imageFile]);
+        showToast(`📋 Screenshot attached to "${targetVariant.name}"!`);
+        return;
+      }
+
+      // 2. Check for Excel table data in clipboard
+      if (hasTableClipboardData(e.clipboardData)) {
+        e.preventDefault();
+        try {
+          const tableData = parseClipboardTable(e.clipboardData);
+          if (tableData && tableData.allRows.length > 0) {
+            showToast('⏳ Converting Excel spreadsheet cells into table image...', 'info');
+            const convertedFile = await convertTableToImageFile(tableData, {
+              title: `${targetVariant.name} - Quotation Breakdown`,
+              filename: `Excel_Quote_${targetVariant.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
+            });
+            handleAddFiles(targetVariant.id, [convertedFile]);
+            showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${targetVariant.name}"!`);
+            return;
+          }
+        } catch (err) {
+          console.error('[StepSnipUpload] Excel conversion error:', err);
+          showToast('⚠️ Could not convert Excel table to image.', 'error');
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [selectedVariants, activeVariantId, snipFiles]);
+
   // Calculate total snips attached across all variants
   const totalAttachedSnips = selectedVariants.reduce((sum, v) => sum + getSnips(v.id).length, 0);
 
@@ -130,7 +218,15 @@ export default function StepSnipUpload({
           const quoteSlide = slideIndices.length >= 3 ? slideIndices[2] : 9;
 
           return (
-            <div key={variant.id} className="glass-panel p-6 space-y-4 flex flex-col justify-between">
+            <div
+              key={variant.id}
+              onClick={() => setActiveVariantId(variant.id)}
+              className={`glass-panel p-6 space-y-4 flex flex-col justify-between cursor-pointer transition-all ${
+                activeVariantId === variant.id
+                  ? 'border-amber-400 ring-2 ring-amber-400/25 shadow-md'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
               
               {/* Variant Header & Multi-Snip Actions */}
               <div>
@@ -230,10 +326,26 @@ export default function StepSnipUpload({
 
                           {/* Actions */}
                           <div className="flex items-center space-x-1.5 shrink-0">
+                            {/* Copy button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopySnip(snip, variant);
+                              }}
+                              className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 transition-colors cursor-pointer"
+                              title="Copy image to clipboard (Ctrl+C)"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+
                             {/* Preview Eye */}
                             <button
                               type="button"
-                              onClick={() => setActivePreview({ url: snip.previewUrl, title: `${variant.name} - Snip #${idx + 1}` })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActivePreview({ url: snip.previewUrl, title: `${variant.name} - Snip #${idx + 1}` });
+                              }}
                               className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 transition-colors cursor-pointer"
                               title="Preview Snip"
                             >
@@ -255,7 +367,10 @@ export default function StepSnipUpload({
                             />
                             <button
                               type="button"
-                              onClick={() => replaceInputRefs.current[`${variant.id}_${snip.id}`]?.click()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                replaceInputRefs.current[`${variant.id}_${snip.id}`]?.click();
+                              }}
                               className="p-1.5 rounded-lg bg-white hover:bg-amber-50 text-slate-500 hover:text-amber-700 border border-slate-200 transition-colors cursor-pointer"
                               title="Replace this image"
                             >
@@ -265,7 +380,10 @@ export default function StepSnipUpload({
                             {/* Remove button */}
                             <button
                               type="button"
-                              onClick={() => handleRemoveSnip(variant.id, snip.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveSnip(variant.id, snip.id);
+                              }}
                               className="p-1.5 rounded-lg bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 transition-colors cursor-pointer"
                               title="Remove this snip"
                             >
@@ -279,7 +397,11 @@ export default function StepSnipUpload({
                     {/* Quick + Add Another Snip Strip */}
                     <button
                       type="button"
-                      onClick={() => fileInputRefs.current[variant.id]?.click()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveVariantId(variant.id);
+                        fileInputRefs.current[variant.id]?.click();
+                      }}
                       className="w-full py-2.5 px-3 border border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/40 hover:bg-amber-50 rounded-xl flex items-center justify-center gap-2 text-xs font-bold text-amber-800 hover:text-amber-900 transition-all cursor-pointer group mt-2"
                     >
                       <Plus className="w-4 h-4 text-amber-700 group-hover:scale-110 transition-transform stroke-[2.5]" />
@@ -289,7 +411,11 @@ export default function StepSnipUpload({
                 ) : (
                   /* Initial Empty Dropzone */
                   <div
-                    onClick={() => fileInputRefs.current[variant.id]?.click()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveVariantId(variant.id);
+                      fileInputRefs.current[variant.id]?.click();
+                    }}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -297,7 +423,7 @@ export default function StepSnipUpload({
                         handleAddFiles(variant.id, e.dataTransfer.files);
                       }
                     }}
-                    className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 hover:bg-amber-50/30 group mt-4 text-center"
+                    className="border-2 border-dashed border-slate-300 hover:border-amber-500 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50 hover:bg-amber-50/30 group mt-4 text-center"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 group-hover:bg-amber-100 flex items-center justify-center text-slate-500 group-hover:text-amber-700 transition-colors mb-3 shadow-xs">
                       <Plus className="w-6 h-6 stroke-[2.5]" />
@@ -308,6 +434,17 @@ export default function StepSnipUpload({
                     <span className="text-xs text-slate-500 mt-1">
                       Click or drag screenshot here • Supports multiple snips via +
                     </span>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                        <Clipboard className="w-3 h-3 text-amber-700" />
+                        <span>Paste Screenshot (<strong>Ctrl+V</strong>)</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200">
+                        <FileSpreadsheet className="w-3 h-3 text-emerald-700" />
+                        <span>Copy Excel &amp; Press <strong>Ctrl+V</strong></span>
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -362,6 +499,26 @@ export default function StepSnipUpload({
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Floating Feedback Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl border flex items-center gap-2.5 text-xs font-bold animate-fadeIn transition-all ${
+          toast.type === 'error'
+            ? 'bg-rose-900 text-white border-rose-700'
+            : toast.type === 'info'
+            ? 'bg-slate-900 text-amber-300 border-slate-700'
+            : 'bg-emerald-900 text-white border-emerald-700'
+        }`}>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 opacity-70 hover:opacity-100 cursor-pointer p-0.5 rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
     </div>
   );

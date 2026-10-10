@@ -1,9 +1,11 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Plus, Trash2, UploadCloud, Image as ImageIcon, 
   ArrowLeft, ArrowRight, CheckCircle2, Eye, X, Sparkles,
-  ChevronLeft, ChevronRight, PackagePlus, FileText
+  ChevronLeft, ChevronRight, PackagePlus, FileText,
+  Copy, Clipboard, FileSpreadsheet
 } from 'lucide-react';
+import { hasTableClipboardData, parseClipboardTable, convertTableToImageFile } from '../utils/tableToImage';
 
 const ACCESSORY_CATEGORIES = [
   'Kitchen Hardware & Baskets',
@@ -28,7 +30,15 @@ export default function StepAccessoriesSnips({
 }) {
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [viewMode, setViewMode] = useState('tabs'); // 'tabs' or 'all'
+  const [toast, setToast] = useState(null);
   const fileInputRefs = useRef({});
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(prev => (prev?.message === message ? null : prev));
+    }, 4000);
+  };
 
   // Ensure activePageIndex stays within bounds
   const safeIndex = Math.min(Math.max(0, activePageIndex), Math.max(0, accessoryPages.length - 1));
@@ -107,6 +117,80 @@ export default function StepAccessoriesSnips({
       return p;
     }));
   };
+
+  // Copy snip image to clipboard (Ctrl+C helper)
+  const handleCopySnip = async (page) => {
+    if (!page.file) return;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([
+          new ClipboardItem({ [page.file.type || 'image/png']: page.file })
+        ]);
+        showToast(`📋 Copied accessory image for "${page.title}" to clipboard!`);
+      } else {
+        showToast('⚠️ Clipboard copy is not supported in this browser', 'error');
+      }
+    } catch (err) {
+      console.warn('Clipboard copy error:', err);
+      showToast('⚠️ Could not copy image to clipboard', 'error');
+    }
+  };
+
+  // Clipboard Paste listener (Ctrl+V for Screenshots and Excel data)
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && activeEl.type !== 'file') {
+        return;
+      }
+
+      if (!e.clipboardData) return;
+
+      const targetPage = currentPage || accessoryPages[0];
+      if (!targetPage) return;
+
+      // 1. Check for image in clipboard
+      const items = e.clipboardData.items || [];
+      let imageFile = null;
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          imageFile = item.getAsFile();
+          break;
+        }
+      }
+
+      if (imageFile) {
+        e.preventDefault();
+        handleFileChange(targetPage.id, imageFile);
+        showToast(`📋 Screenshot attached to "${targetPage.title}"!`);
+        return;
+      }
+
+      // 2. Check for Excel table data in clipboard
+      if (hasTableClipboardData(e.clipboardData)) {
+        e.preventDefault();
+        try {
+          const tableData = parseClipboardTable(e.clipboardData);
+          if (tableData && tableData.allRows.length > 0) {
+            showToast('⏳ Converting Excel spreadsheet cells into table image...', 'info');
+            const convertedFile = await convertTableToImageFile(tableData, {
+              title: `${targetPage.title} - Hardware Specifications`,
+              filename: `Excel_Acc_${targetPage.category.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
+            });
+            handleFileChange(targetPage.id, convertedFile);
+            showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${targetPage.title}"!`);
+            return;
+          }
+        } catch (err) {
+          console.error('[StepAccessoriesSnips] Excel conversion error:', err);
+          showToast('⚠️ Could not convert Excel table to image.', 'error');
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [accessoryPages, currentPage, safeIndex]);
 
   const uploadedPagesCount = accessoryPages.filter(p => p.file).length;
 
@@ -312,8 +396,17 @@ export default function StepAccessoriesSnips({
                     <div className="flex items-center gap-2 pt-3">
                       <button
                         type="button"
+                        onClick={() => handleCopySnip(currentPage)}
+                        className="px-4 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        title="Copy image to clipboard (Ctrl+C)"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copy</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => fileInputRefs.current[currentPage.id]?.click()}
-                        className="px-4 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-sm transition-all cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 shadow-xs transition-all cursor-pointer"
                       >
                         Replace Image
                       </button>
@@ -348,9 +441,17 @@ export default function StepAccessoriesSnips({
                   <p className="text-xs text-slate-500 mt-1">
                     Upload PNG, JPG, or WebP screenshot for {currentPage.title}
                   </p>
-                  <span className="mt-3 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                    Click to browse files
-                  </span>
+                  
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                      <Clipboard className="w-3 h-3 text-amber-700" />
+                      <span>Paste Screenshot (<strong>Ctrl+V</strong>)</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-900 border border-emerald-200">
+                      <FileSpreadsheet className="w-3 h-3 text-emerald-700" />
+                      <span>Copy Excel &amp; Press <strong>Ctrl+V</strong></span>
+                    </span>
+                  </div>
                 </div>
               )}
 
@@ -557,6 +658,26 @@ export default function StepAccessoriesSnips({
           </button>
         </div>
       </div>
+
+      {/* Floating Feedback Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-2xl border flex items-center gap-2.5 text-xs font-bold animate-fadeIn transition-all ${
+          toast.type === 'error'
+            ? 'bg-rose-900 text-white border-rose-700'
+            : toast.type === 'info'
+            ? 'bg-slate-900 text-amber-300 border-slate-700'
+            : 'bg-emerald-900 text-white border-emerald-700'
+        }`}>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 opacity-70 hover:opacity-100 cursor-pointer p-0.5 rounded"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
     </div>
   );

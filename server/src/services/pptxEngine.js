@@ -3,6 +3,131 @@ const path = require('path');
 const JSZip = require('jszip');
 
 /**
+ * Extracts image width and height from PNG, JPEG, WebP, GIF buffers without external dependencies
+ */
+function getImageDimensions(buf) {
+  if (!buf || !Buffer.isBuffer(buf) || buf.length < 24) return null;
+
+  try {
+    // 1. PNG
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+      return {
+        width: buf.readUInt32BE(16),
+        height: buf.readUInt32BE(20)
+      };
+    }
+
+    // 2. JPEG
+    if (buf[0] === 0xFF && buf[1] === 0xD8) {
+      let offset = 2;
+      while (offset < buf.length - 8) {
+        if (buf[offset] !== 0xFF) {
+          offset++;
+          continue;
+        }
+        const marker = buf[offset + 1];
+        if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
+            (marker >= 0xC9 && marker <= 0xCB) || (marker >= 0xCD && marker <= 0xCF)) {
+          return {
+            height: buf.readUInt16BE(offset + 5),
+            width: buf.readUInt16BE(offset + 7)
+          };
+        }
+        const len = buf.readUInt16BE(offset + 2);
+        offset += 2 + len;
+      }
+    }
+
+    // 3. WebP
+    if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+      const chunkType = buf.toString('ascii', 12, 16);
+      if (chunkType === 'VP8 ' && buf.length >= 30) {
+        return {
+          width: buf.readUInt16LE(26) & 0x3fff,
+          height: buf.readUInt16LE(28) & 0x3fff
+        };
+      }
+      if (chunkType === 'VP8L' && buf.length >= 25) {
+        const b0 = buf[21], b1 = buf[22], b2 = buf[23], b3 = buf[24];
+        return {
+          width: 1 + (((b1 & 0x3f) << 8) | b0),
+          height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6))
+        };
+      }
+      if (chunkType === 'VP8X' && buf.length >= 30) {
+        return {
+          width: 1 + buf.readUIntLE(24, 3),
+          height: 1 + buf.readUIntLE(27, 3)
+        };
+      }
+    }
+
+    // 4. GIF
+    if (buf.toString('ascii', 0, 3) === 'GIF') {
+      return {
+        width: buf.readUInt16LE(6),
+        height: buf.readUInt16LE(8)
+      };
+    }
+  } catch (e) {
+    console.warn('[PptxEngine] Error reading image dimensions from buffer:', e.message);
+  }
+
+  return null;
+}
+
+/**
+ * Calculates optimal shape transform coordinates (EMU) so snips never shrink or distort.
+ * Slide dimensions: 10045700 x 14198600 EMUs (Portrait)
+ * Content area: width up to 8800000, height up to 10400000, top 2500000
+ */
+function calculateImageBounds(buf) {
+  const slideWidth = 10045700;
+  const maxWidth = 8800000;
+  const maxHeight = 10400000;
+  const contentTop = 2500000;
+
+  const dims = getImageDimensions(buf);
+  if (!dims || !dims.width || !dims.height) {
+    return {
+      x: 622850,
+      y: contentTop,
+      cx: maxWidth,
+      cy: maxHeight
+    };
+  }
+
+  const imgAspect = dims.width / dims.height;
+  const boxAspect = maxWidth / maxHeight; // ~0.846
+
+  let cx, cy;
+  if (imgAspect >= boxAspect) {
+    // Wide image (Excel table or widescreen snip): expand to full available width
+    cx = maxWidth;
+    cy = Math.round(maxWidth / imgAspect);
+    if (cy > maxHeight) {
+      cy = maxHeight;
+      cx = Math.round(maxHeight * imgAspect);
+    }
+  } else {
+    // Tall portrait image: expand to full available height
+    cy = maxHeight;
+    cx = Math.round(maxHeight * imgAspect);
+    if (cx > maxWidth) {
+      cx = maxWidth;
+      cy = Math.round(maxWidth / imgAspect);
+    }
+  }
+
+  // Horizontally center on the slide:
+  const x = Math.max(0, Math.round((slideWidth - cx) / 2));
+  // Top-aligned in the content area beneath slide title:
+  const y = contentTop;
+
+  return { x, y, cx, cy };
+}
+
+/**
  * PPTX Template Subtraction Engine
  * 
  * Takes a Master PPTX template containing all possible variant slides,
@@ -90,6 +215,20 @@ class PptxEngine {
       slideDisplayIndex++;
     }
 
+    // Cache base quotation template XML BEFORE any slides are purged from the zip
+    let baseQuotationTemplateXml = '';
+    const slide9Ref = sldIdList.find(s => s.displayIndex === 9);
+    const slide9Entry = zip.file('ppt/slides/slide9.xml') || (slide9Ref ? zip.file(slide9Ref.fullZipPath) : null);
+    if (slide9Entry) {
+      baseQuotationTemplateXml = await slide9Entry.async('text');
+    } else {
+      const anyQuoteRef = sldIdList.find(s => s.displayIndex >= 7 && s.displayIndex <= 18);
+      const anyEntry = anyQuoteRef ? zip.file(anyQuoteRef.fullZipPath) : null;
+      if (anyEntry) {
+        baseQuotationTemplateXml = await anyEntry.async('text');
+      }
+    }
+
     // 2. Determine which slide display indices to DELETE
     const slidesToDeleteIndices = new Set();
     const selectedVariantIdSet = new Set(selectedVariantIds.map(String));
@@ -135,7 +274,7 @@ class PptxEngine {
 
     // 2.5 Insert Unit Snips Slides (if any unit pages are uploaded)
     if (Array.isArray(unitSnips) && unitSnips.length > 0) {
-      const templateSlideXml = await zip.file('ppt/slides/slide9.xml').async('text');
+      const templateSlideXml = baseQuotationTemplateXml;
       let insertIndex = keptSlides.findIndex(s => s.displayIndex > 6);
       if (insertIndex === -1) insertIndex = keptSlides.length;
 
@@ -176,6 +315,7 @@ class PptxEngine {
           const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
           unitRelsXml = unitRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
 
+          const bounds = calculateImageBounds(uBuffer);
           const picXml = `
             <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
               <p:nvPicPr>
@@ -189,8 +329,8 @@ class PptxEngine {
               </p:blipFill>
               <p:spPr>
                 <a:xfrm>
-                  <a:off x="750000" y="2600000"/>
-                  <a:ext cx="8500000" cy="9500000"/>
+                  <a:off x="${bounds.x}" y="${bounds.y}"/>
+                  <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
                 </a:xfrm>
                 <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
               </p:spPr>
@@ -224,7 +364,7 @@ class PptxEngine {
 
     // 2.6 Insert Accessory Snips Slides (if any accessory pages are uploaded)
     if (Array.isArray(accessorySnips) && accessorySnips.length > 0) {
-      const templateSlideXml = await zip.file('ppt/slides/slide9.xml').async('text');
+      const templateSlideXml = baseQuotationTemplateXml;
       // Place accessory slides before timeline & terms slides (around displayIndex 22)
       let accInsertIndex = keptSlides.findIndex(s => s.displayIndex >= 22);
       if (accInsertIndex === -1) accInsertIndex = keptSlides.length;
@@ -266,6 +406,7 @@ class PptxEngine {
           const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
           accRelsXml = accRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
 
+          const bounds = calculateImageBounds(aBuffer);
           const picXml = `
             <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
               <p:nvPicPr>
@@ -279,8 +420,8 @@ class PptxEngine {
               </p:blipFill>
               <p:spPr>
                 <a:xfrm>
-                  <a:off x="750000" y="2600000"/>
-                  <a:ext cx="8500000" cy="9500000"/>
+                  <a:off x="${bounds.x}" y="${bounds.y}"/>
+                  <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
                 </a:xfrm>
                 <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
               </p:spPr>
@@ -344,8 +485,14 @@ class PptxEngine {
         const baseKeptIdx = keptSlides.findIndex(s => s.displayIndex === quoteSlideNum);
         if (baseKeptIdx === -1) continue;
 
-        const baseSlidePath = `ppt/slides/slide${quoteSlideNum}.xml`;
-        const baseSlideXml = await zip.file(baseSlidePath).async('text');
+        const baseSlide = keptSlides[baseKeptIdx];
+        const baseSlidePath = baseSlide ? baseSlide.fullZipPath : `ppt/slides/slide${quoteSlideNum}.xml`;
+        const baseSlideEntry = zip.file(baseSlidePath);
+        if (!baseSlideEntry) {
+          console.warn(`[PptxEngine] Base slide ${baseSlidePath} not found in zip, skipping extra snips.`);
+          continue;
+        }
+        const baseSlideXml = await baseSlideEntry.async('text');
 
         for (let sIdx = 1; sIdx < variantSnipList.length; sIdx++) {
           const extraSnipFile = variantSnipList[sIdx];
@@ -381,6 +528,7 @@ class PptxEngine {
             const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
             extraRelsXml = extraRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
 
+            const bounds = calculateImageBounds(extraBuffer);
             const picXml = `
               <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
                 <p:nvPicPr>
@@ -394,8 +542,8 @@ class PptxEngine {
                 </p:blipFill>
                 <p:spPr>
                   <a:xfrm>
-                    <a:off x="750000" y="2600000"/>
-                    <a:ext cx="8500000" cy="9500000"/>
+                    <a:off x="${bounds.x}" y="${bounds.y}"/>
+                    <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
                   </a:xfrm>
                   <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
                 </p:spPr>
@@ -565,9 +713,7 @@ class PptxEngine {
           slideRelsXml = slideRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
           zip.file(slideRelsPath, slideRelsXml);
 
-          // Add image shape to slide XML inside <p:spTree>
-          // Coordinates in portrait slide:
-          // x: 750000 (0.82 in), y: 2600000 (2.84 in), width: 8500000 (9.3 in), height: 9500000 (10.4 in)
+          const bounds = calculateImageBounds(snipBuffer);
           const picXml = `
             <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
               <p:nvPicPr>
@@ -581,8 +727,8 @@ class PptxEngine {
               </p:blipFill>
               <p:spPr>
                 <a:xfrm>
-                  <a:off x="750000" y="2600000"/>
-                  <a:ext cx="8500000" cy="9500000"/>
+                  <a:off x="${bounds.x}" y="${bounds.y}"/>
+                  <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
                 </a:xfrm>
                 <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
               </p:spPr>

@@ -226,8 +226,33 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     }
 
     const snips = {};
+    const unitSnips = [];
+    let unitPagesMetadata = [];
+    try {
+      unitPagesMetadata = typeof body.unitPagesMetadata === 'string'
+        ? JSON.parse(body.unitPagesMetadata)
+        : (body.unitPagesMetadata || []);
+    } catch (e) {
+      unitPagesMetadata = [];
+    }
+
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
+        // Check if unit snip
+        const unitMatch = file.fieldname.match(/^unit_snip_(.+)$/);
+        if (unitMatch) {
+          const unitId = unitMatch[1];
+          const meta = unitPagesMetadata.find(m => String(m.id) === String(unitId)) || {};
+          unitSnips.push({
+            id: unitId,
+            title: meta.title || 'Unit Breakdown',
+            category: meta.category || 'Unit Specification',
+            notes: meta.notes || '',
+            filePath: file.path
+          });
+          continue;
+        }
+
         const match = file.fieldname.match(/^snip_(.+)$/);
         if (match) {
           snips[match[1]] = file.path;
@@ -279,6 +304,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       clientInfo,
       repInfo,
       snips,
+      unitSnips,
       outputPath: pptxOutputPath
     });
 

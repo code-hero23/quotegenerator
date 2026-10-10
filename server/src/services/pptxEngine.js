@@ -35,11 +35,23 @@ class PptxEngine {
     clientInfo = {},
     repInfo = {},
     snips = {},
+    unitSnips = [],
     outputPath
   }) {
     if (!fs.existsSync(this.masterTemplatePath)) {
       throw new Error(`Master template not found at: ${this.masterTemplatePath}`);
     }
+
+    // Helper to escape XML entities
+    const escapeXml = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    };
 
     const templateBuffer = fs.readFileSync(this.masterTemplatePath);
     const zip = await JSZip.loadAsync(templateBuffer);
@@ -78,7 +90,6 @@ class PptxEngine {
     }
 
     // 2. Determine which slide display indices to DELETE
-    // Slides to delete are the ones belonging to unselected variants
     const slidesToDeleteIndices = new Set();
     const selectedVariantIdSet = new Set(selectedVariantIds.map(String));
 
@@ -98,11 +109,119 @@ class PptxEngine {
       }
     }
 
-    // Slides to keep
+    // Slides to keep and delete
     const keptSlides = sldIdList.filter(s => !slidesToDeleteIndices.has(s.displayIndex));
     const deletedSlides = sldIdList.filter(s => slidesToDeleteIndices.has(s.displayIndex));
 
-    // 3. Modify ppt/presentation.xml: keep only kept slides in <p:sldIdLst>
+    let updatedContentTypes = contentTypesXmlStr;
+    let updatedPresRelsXml = presRelsXmlStr;
+
+    // Purge unselected variant slides
+    for (const del of deletedSlides) {
+      if (del.target) {
+        const slidePartName = `/ppt/${del.target.replace(/^\//, '')}`;
+        const overrideRegex = new RegExp(`<Override\\s+PartName="${slidePartName.replace('/', '\\/')}"[^>]*?\\/>`, 'g');
+        updatedContentTypes = updatedContentTypes.replace(overrideRegex, '');
+
+        const relRegex = new RegExp(`<Relationship\\s+[^>]*?Id="${del.rId}"[^>]*?\\/>`, 'g');
+        updatedPresRelsXml = updatedPresRelsXml.replace(relRegex, '');
+
+        zip.remove(del.fullZipPath);
+        const slideRelsPath = `ppt/slides/_rels/${path.basename(del.target)}.rels`;
+        zip.remove(slideRelsPath);
+      }
+    }
+
+    // 2.5 Insert Unit Snips Slides (if any unit pages are uploaded)
+    if (Array.isArray(unitSnips) && unitSnips.length > 0) {
+      const templateSlideXml = await zip.file('ppt/slides/slide9.xml').async('text');
+      let insertIndex = keptSlides.findIndex(s => s.displayIndex > 6);
+      if (insertIndex === -1) insertIndex = keptSlides.length;
+
+      for (let uIdx = 0; uIdx < unitSnips.length; uIdx++) {
+        const u = unitSnips[uIdx];
+        const unitSlideTarget = `slides/slide_unit_${uIdx + 1}.xml`;
+        const unitFullZipPath = `ppt/${unitSlideTarget}`;
+        const unitSlideRelsZipPath = `ppt/slides/_rels/slide_unit_${uIdx + 1}.xml.rels`;
+        const unitRId = `rIdUnit_${uIdx + 1}`;
+        const unitSldId = String(30000 + uIdx);
+
+        const uTitle = escapeXml(u.title || `Unit ${uIdx + 1} Breakdown`);
+        const uCat = escapeXml(u.category || 'Unit Specification');
+
+        let unitXml = templateSlideXml;
+        unitXml = unitXml.replace(
+          /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
+          `<a:t>${uTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT"/></a:rPr><a:t>${uCat}</a:t>`
+        );
+
+        let unitRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
+
+        const uFilePath = u.filePath || u.path;
+        let uBuffer = null;
+        let uExt = 'png';
+        if (Buffer.isBuffer(uFilePath)) {
+          uBuffer = uFilePath;
+        } else if (typeof uFilePath === 'string' && fs.existsSync(uFilePath)) {
+          uBuffer = fs.readFileSync(uFilePath);
+          uExt = path.extname(uFilePath).replace('.', '') || 'png';
+        }
+
+        if (uBuffer) {
+          const mediaFileName = `unit_snip_${uIdx + 1}_${Date.now()}.${uExt}`;
+          zip.file(`ppt/media/${mediaFileName}`, uBuffer);
+
+          const snipRelId = `rIdUnitImg_${uIdx + 1}`;
+          const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
+          unitRelsXml = unitRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
+
+          const picXml = `
+            <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+              <p:nvPicPr>
+                <p:cNvPr id="${12000 + uIdx}" name="UnitSnip_${uIdx + 1}"/>
+                <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                <p:nvPr/>
+              </p:nvPicPr>
+              <p:blipFill>
+                <a:blip r:embed="${snipRelId}"/>
+                <a:stretch><a:fillRect/></a:stretch>
+              </p:blipFill>
+              <p:spPr>
+                <a:xfrm>
+                  <a:off x="750000" y="2600000"/>
+                  <a:ext cx="8500000" cy="9500000"/>
+                </a:xfrm>
+                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+              </p:spPr>
+            </p:pic>
+          `.trim();
+          unitXml = unitXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+        }
+
+        zip.file(unitFullZipPath, unitXml);
+        zip.file(unitSlideRelsZipPath, unitRelsXml);
+
+        updatedContentTypes = updatedContentTypes.replace(
+          '</Types>',
+          `<Override PartName="/ppt/${unitSlideTarget}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`
+        );
+
+        updatedPresRelsXml = updatedPresRelsXml.replace(
+          '</Relationships>',
+          `<Relationship Id="${unitRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="${unitSlideTarget}"/></Relationships>`
+        );
+
+        keptSlides.splice(insertIndex + uIdx, 0, {
+          displayIndex: 6.1 + uIdx,
+          id: unitSldId,
+          rId: unitRId,
+          target: unitSlideTarget,
+          fullZipPath: unitFullZipPath
+        });
+      }
+    }
+
+    // 3. Update ppt/presentation.xml: keep only kept & inserted slides in <p:sldIdLst>
     const newSldIdXml = keptSlides.map(s => `<p:sldId id="${s.id}" r:id="${s.rId}"/>`).join('');
     const updatedPresXml = presXmlStr.replace(
       /<p:sldIdLst>[\s\S]*?<\/p:sldIdLst>/,
@@ -110,40 +229,8 @@ class PptxEngine {
     );
     zip.file('ppt/presentation.xml', updatedPresXml);
 
-    // 4. Clean up presentation.xml.rels, [Content_Types].xml & deleted slide files
-    let updatedContentTypes = contentTypesXmlStr;
-    let updatedPresRelsXml = presRelsXmlStr;
-
-    for (const del of deletedSlides) {
-      if (del.target) {
-        const slidePartName = `/ppt/${del.target.replace(/^\//, '')}`;
-        // Remove override in [Content_Types].xml
-        const overrideRegex = new RegExp(`<Override\\s+PartName="${slidePartName.replace('/', '\\/')}"[^>]*?\\/>`, 'g');
-        updatedContentTypes = updatedContentTypes.replace(overrideRegex, '');
-
-        // Remove relationship from ppt/_rels/presentation.xml.rels
-        const relRegex = new RegExp(`<Relationship\\s+[^>]*?Id="${del.rId}"[^>]*?\\/>`, 'g');
-        updatedPresRelsXml = updatedPresRelsXml.replace(relRegex, '');
-
-        // Remove slide file and its rels file from zip
-        zip.remove(del.fullZipPath);
-        const slideRelsPath = `ppt/slides/_rels/${path.basename(del.target)}.rels`;
-        zip.remove(slideRelsPath);
-      }
-    }
     zip.file('[Content_Types].xml', updatedContentTypes);
     zip.file('ppt/_rels/presentation.xml.rels', updatedPresRelsXml);
-
-    // Helper to escape XML entities
-    const escapeXml = (str) => {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
 
     // 5. Build dynamic footer string (properly XML escaped)
     // Master template footer: "Mr. Aravindan | Individual Villa Adyar | 7418414780"

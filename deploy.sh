@@ -18,22 +18,22 @@ echo "=========================================================="
 
 # 1. Pull latest code from GitHub
 echo ""
-echo "📥 [1/5] Pulling latest updates from GitHub (main)..."
+echo "📥 [1/6] Pulling latest updates from GitHub (main)..."
 git pull origin main
 
-# 2. Install Presentation Fonts & LibreOffice for 100% PPTX to PDF Alignment
+# 2. Install Presentation Fonts (including Baskerville, Klein, Moontime, Caudex, Inter, Calibri, Segoe UI)
 echo ""
-echo "🔤 [2/5] Installing presentation fonts (Calibri, Segoe UI, Times, Arial)..."
+echo "🔤 [2/6] Installing presentation fonts into system font cache..."
 sudo mkdir -p /usr/local/share/fonts/quotegenerator
 mkdir -p "$HOME/.local/share/fonts/quotegenerator"
 
 if [ -d "$APP_DIR/server/fonts" ]; then
-    echo "Copying bundled fonts to system font directories..."
-    sudo cp -f "$APP_DIR/server/fonts"/* /usr/local/share/fonts/quotegenerator/
-    sudo chmod 644 /usr/local/share/fonts/quotegenerator/*
+    echo "Copying fonts from $APP_DIR/server/fonts..."
+    sudo cp -f "$APP_DIR/server/fonts"/*.* /usr/local/share/fonts/quotegenerator/ || true
+    sudo chmod 644 /usr/local/share/fonts/quotegenerator/* || true
     
-    cp -f "$APP_DIR/server/fonts"/* "$HOME/.local/share/fonts/quotegenerator/"
-    chmod 644 "$HOME/.local/share/fonts/quotegenerator/"*
+    cp -f "$APP_DIR/server/fonts"/*.* "$HOME/.local/share/fonts/quotegenerator/" || true
+    chmod 644 "$HOME/.local/share/fonts/quotegenerator/"* || true
 fi
 
 echo "Installing fontconfig, metric-compatible font packages & LibreOffice Impress..."
@@ -50,9 +50,36 @@ echo "Rebuilding font cache to register presentation fonts..."
 sudo fc-cache -f
 fc-cache -f
 
-# 3. Update Server Dependencies & Configure Port 5002
+# 3. Install ONLYOFFICE Document Builder for 100% Microsoft OOXML fidelity
 echo ""
-echo "⚙️ [3/5] Setting up Backend Server on port 5002..."
+echo "🏢 [3/6] Setting up ONLYOFFICE Document Builder for 100% OOXML presentation export..."
+if ! command -v docbuilder &> /dev/null && [ ! -f /opt/onlyoffice/documentbuilder/docbuilder ]; then
+    echo "Installing ONLYOFFICE Document Builder on Ubuntu..."
+    sudo mkdir -p -m 700 /root/.gnupg 2>/dev/null || true
+    curl -fsSL https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE | sudo gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/onlyoffice.gpg --import 2>/dev/null || true
+    if [ -f /usr/share/keyrings/onlyoffice.gpg ]; then
+        sudo chmod 644 /usr/share/keyrings/onlyoffice.gpg
+        echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" | sudo tee /etc/apt/sources.list.d/onlyoffice.list > /dev/null
+        sudo apt-get update -qq || true
+        sudo apt-get install -y onlyoffice-documentbuilder || true
+    fi
+
+    # Fallback to direct .deb download if apt repository had any issue
+    if ! command -v docbuilder &> /dev/null && [ ! -f /opt/onlyoffice/documentbuilder/docbuilder ]; then
+        echo "Downloading ONLYOFFICE Document Builder direct deb package..."
+        curl -fsSL -o /tmp/onlyoffice-documentbuilder.deb https://download.onlyoffice.com/install/desktop/docbuilder/linux/onlyoffice-documentbuilder_amd64.deb || true
+        if [ -f /tmp/onlyoffice-documentbuilder.deb ]; then
+            sudo dpkg -i /tmp/onlyoffice-documentbuilder.deb || sudo apt-get -f install -y || true
+            rm -f /tmp/onlyoffice-documentbuilder.deb
+        fi
+    fi
+else
+    echo "ONLYOFFICE Document Builder is already installed."
+fi
+
+# 4. Update Server Dependencies & Configure Port 5002
+echo ""
+echo "⚙️ [4/6] Setting up Backend Server on port 5002..."
 cd "$APP_DIR/server"
 npm install --omit=dev
 
@@ -76,16 +103,16 @@ else
     echo "Configured server/.env to PORT=5002"
 fi
 
-# 4. Build Frontend Application
+# 5. Build Frontend Application
 echo ""
-echo "🎨 [4/5] Building Client Frontend (Vite Production Build)..."
+echo "🎨 [5/6] Building Client Frontend (Vite Production Build)..."
 cd "$APP_DIR/client"
 npm install
 npm run build
 
-# 5. Restart Application via PM2
+# 6. Restart Application via PM2
 echo ""
-echo "🔄 [5/5] Restarting Backend Service via PM2 on port 5002..."
+echo "🔄 [6/6] Restarting Backend Service via PM2 on port 5002..."
 cd "$APP_DIR/server"
 
 if pm2 list | grep -q "quotegenerator-api"; then

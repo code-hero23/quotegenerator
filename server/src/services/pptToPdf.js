@@ -23,21 +23,93 @@ async function convertPptxToPdf(pptxPath, pdfPath) {
       fs.mkdirSync(destDir, { recursive: true });
     }
 
-    // Windows PowerPoint COM converter
+    // Windows: PowerPoint COM -> ONLYOFFICE -> LibreOffice
     if (process.platform === 'win32') {
       convertWithPowerPointCom(pptxPath, pdfPath)
         .then(res => {
-          if (res.success) return resolve(res);
-          console.warn('⚠️ PowerPoint COM failed, attempting LibreOffice fallback on Windows...');
-          convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
+          if (res && res.success) return res;
+          console.warn('⚠️ PowerPoint COM failed, attempting ONLYOFFICE fallback on Windows...');
+          return convertWithOnlyOffice(pptxPath, pdfPath);
         })
+        .then(res => {
+          if (res && res.success) return res;
+          console.warn('⚠️ ONLYOFFICE failed, attempting LibreOffice fallback on Windows...');
+          return convertWithLibreOffice(pptxPath, pdfPath);
+        })
+        .then(resolve)
         .catch(() => {
           convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
         });
     } else {
-      // Linux / Ubuntu: Headless LibreOffice
-      convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
+      // Linux / Ubuntu: Primary ONLYOFFICE Document Builder (strict OOXML fidelity), fallback to LibreOffice
+      convertWithOnlyOffice(pptxPath, pdfPath)
+        .then(res => {
+          if (res && res.success) return res;
+          console.warn('⚠️ ONLYOFFICE docbuilder not present or failed, falling back to LibreOffice headless on Linux...');
+          return convertWithLibreOffice(pptxPath, pdfPath);
+        })
+        .then(resolve)
+        .catch(() => {
+          convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
+        });
     }
+  });
+}
+
+/**
+ * Converts PPTX to PDF using ONLYOFFICE Document Builder (docbuilder)
+ * Native OOXML engine provides exact 1:1 presentation layouts and font fidelity.
+ */
+function convertWithOnlyOffice(pptxPath, pdfPath) {
+  return new Promise((resolve) => {
+    const absPptx = path.resolve(pptxPath);
+    const absPdf = path.resolve(pdfPath);
+    const destDir = path.dirname(absPdf);
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+
+    const builderCommands = process.platform === 'win32'
+      ? ['docbuilder', '"C:\\Program Files\\ONLYOFFICE\\DocumentBuilder\\docbuilder.exe"']
+      : ['docbuilder', '/usr/bin/docbuilder', '/opt/onlyoffice/documentbuilder/docbuilder'];
+
+    const scriptPath = path.join(os.tmpdir(), `builder_${Date.now()}_${Math.random().toString(36).substring(7)}.docbuilder`);
+    const scriptContent = [
+      `builder.OpenFile("${absPptx.replace(/\\/g, '/')}");`,
+      `builder.SaveFile("pdf", "${absPdf.replace(/\\/g, '/')}");`,
+      `builder.CloseFile();`
+    ].join('\n');
+
+    try {
+      fs.writeFileSync(scriptPath, scriptContent, 'utf8');
+    } catch (writeErr) {
+      return resolve({ success: false, error: `Failed to write docbuilder script: ${writeErr.message}` });
+    }
+
+    console.log(`🔄 Launching ONLYOFFICE Document Builder for: ${path.basename(pptxPath)}...`);
+
+    function tryBuilder(index) {
+      if (index >= builderCommands.length) {
+        try { if (fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath); } catch (e) {}
+        return resolve({ success: false, error: 'ONLYOFFICE docbuilder binary not found on system.' });
+      }
+
+      const bin = builderCommands[index];
+      const cmd = `${bin} "${scriptPath}"`;
+
+      exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
+        if (fs.existsSync(absPdf) && fs.statSync(absPdf).size > 0) {
+          const size = fs.statSync(absPdf).size;
+          console.log(`✅ ONLYOFFICE Document Builder converted PPTX to PDF successfully (${(size / (1024 * 1024)).toFixed(2)} MB)`);
+          try { if (fs.existsSync(scriptPath)) fs.unlinkSync(scriptPath); } catch (e) {}
+          return resolve({ success: true, fileSize: size });
+        } else {
+          tryBuilder(index + 1);
+        }
+      });
+    }
+
+    tryBuilder(0);
   });
 }
 

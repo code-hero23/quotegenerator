@@ -11,6 +11,7 @@ export default function StepReviewGenerate({
   variants,
   selectedVariantIds,
   snipFiles,
+  unitPages = [],
   onBack,
   onGenerate,
   isGenerating,
@@ -166,6 +167,42 @@ export default function StepReviewGenerate({
             </div>
           </div>
         </div>
+
+        {/* Unit Breakdown Snips Overview */}
+        {unitPages && unitPages.length > 0 && (
+          <div className="md:col-span-3 glass-panel p-4 flex flex-wrap items-center justify-between gap-3 bg-amber-50/40 border-amber-200">
+            <div className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-amber-500/30">
+                {unitPages.length}
+              </span>
+              <div>
+                <span className="text-xs font-bold text-slate-800">
+                  Unit Breakdown Pages Configured: <strong className="text-amber-800">{unitPages.length} Unit Page(s)</strong>
+                </span>
+                <span className="text-[11px] text-slate-500 block">
+                  {unitPages.filter(u => u.file).length} snip image(s) attached
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {unitPages.map((u, i) => (
+                <span 
+                  key={u.id || i} 
+                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
+                    u.file 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                      : 'bg-white text-slate-600 border-slate-200'
+                  }`}
+                >
+                  <span>#{i + 1}</span>
+                  <span className="truncate max-w-[120px]">{u.category || u.title}</span>
+                  {u.file && <span className="text-emerald-600 font-bold">✓</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 

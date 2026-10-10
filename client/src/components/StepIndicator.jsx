@@ -1,17 +1,18 @@
 import React from 'react';
-import { UserCheck, Layers, Image as ImageIcon, Send } from 'lucide-react';
+import { UserCheck, Layers, LayoutGrid, Image as ImageIcon, Send } from 'lucide-react';
 
 const steps = [
-  { id: 1, label: 'Client & Sales Rep', desc: 'Contact & Cover Details', icon: UserCheck },
-  { id: 2, label: 'Variant Selection', desc: 'Choose Template Variants', icon: Layers },
-  { id: 3, label: 'Quotation Snips', desc: 'Attach Pricing Tables', icon: ImageIcon },
-  { id: 4, label: 'Generate & Export', desc: 'Compile & Download PPTX', icon: Send }
+  { id: 1, label: 'Client & Rep', desc: 'Contact & Details', icon: UserCheck },
+  { id: 2, label: 'Variants', desc: 'Choose Variants', icon: Layers },
+  { id: 3, label: 'Units Snips', desc: 'Unit-wise Pages (+)', icon: LayoutGrid },
+  { id: 4, label: 'Quotation Snips', desc: 'Pricing Breakdown', icon: ImageIcon },
+  { id: 5, label: 'Generate & Export', desc: 'Dual PPTX & PDF', icon: Send }
 ];
 
 export default function StepIndicator({ currentStep, onSelectStep }) {
   return (
     <div className="w-full py-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {steps.map((step) => {
           const Icon = step.icon;
           const isActive = currentStep === step.id;

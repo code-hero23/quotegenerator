@@ -4,6 +4,7 @@ import Header from './components/Header';
 import StepIndicator from './components/StepIndicator';
 import StepClientRep from './components/StepClientRep';
 import StepVariantSelection from './components/StepVariantSelection';
+import StepUnitSnips from './components/StepUnitSnips';
 import StepSnipUpload from './components/StepSnipUpload';
 import StepReviewGenerate from './components/StepReviewGenerate';
 import QuotationHistoryModal from './components/QuotationHistoryModal';
@@ -128,6 +129,16 @@ export default function App() {
   ]);
 
   const [snipFiles, setSnipFiles] = useState({});
+  const [unitPages, setUnitPages] = useState([
+    {
+      id: 'unit-1',
+      title: 'Unit 1 - Modular Kitchen',
+      category: 'Modular Kitchen',
+      notes: '',
+      file: null,
+      previewUrl: null
+    }
+  ]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -209,6 +220,20 @@ export default function App() {
       Object.entries(snipFiles).forEach(([variantId, file]) => {
         if (file) {
           formData.append(`snip_${variantId}`, file);
+        }
+      });
+
+      // Append unit pages metadata & unit snip files
+      formData.append('unitPagesMetadata', JSON.stringify(unitPages.map(p => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        notes: p.notes
+      }))));
+
+      unitPages.forEach(p => {
+        if (p.file) {
+          formData.append(`unit_snip_${p.id}`, p.file);
         }
       });
 
@@ -315,24 +340,34 @@ export default function App() {
         )}
 
         {currentStep === 3 && (
-          <StepSnipUpload
-            variants={variants}
-            selectedVariantIds={selectedVariantIds}
-            snipFiles={snipFiles}
-            setSnipFiles={setSnipFiles}
+          <StepUnitSnips
+            unitPages={unitPages}
+            setUnitPages={setUnitPages}
             onBack={() => setCurrentStep(2)}
             onNext={() => setCurrentStep(4)}
           />
         )}
 
         {currentStep === 4 && (
+          <StepSnipUpload
+            variants={variants}
+            selectedVariantIds={selectedVariantIds}
+            snipFiles={snipFiles}
+            setSnipFiles={setSnipFiles}
+            onBack={() => setCurrentStep(3)}
+            onNext={() => setCurrentStep(5)}
+          />
+        )}
+
+        {currentStep === 5 && (
           <StepReviewGenerate
             clientInfo={clientInfo}
             repInfo={repInfo}
             variants={variants}
             selectedVariantIds={selectedVariantIds}
             snipFiles={snipFiles}
-            onBack={() => setCurrentStep(3)}
+            unitPages={unitPages}
+            onBack={() => setCurrentStep(4)}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             generationResult={generationResult}

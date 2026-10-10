@@ -23,6 +23,8 @@ const COMMON_CATEGORIES = [
 ];
 
 export default function StepUnitSnips({
+  variants = [],
+  selectedVariantIds = [],
   unitPages = [],
   setUnitPages,
   onBack,
@@ -30,7 +32,10 @@ export default function StepUnitSnips({
 }) {
   const fileInputRefs = useRef({});
   const [activePageId, setActivePageId] = useState(unitPages[0]?.id || null);
+  const [selectedVariantFilter, setSelectedVariantFilter] = useState('all');
   const [toast, setToast] = useState(null);
+
+  const selectedVariants = variants.filter(v => selectedVariantIds.includes(v.id));
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -39,12 +44,14 @@ export default function StepUnitSnips({
     }, 4000);
   };
 
-  // Add a new unit page
+  // Add a new unit page (optionally assigned to active variant filter)
   const handleAddPage = () => {
     const newIndex = unitPages.length + 1;
     const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
+    const targetVariantId = selectedVariantFilter === 'all' ? 'all' : selectedVariantFilter;
     const newPage = {
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+      variantId: targetVariantId,
       title: `Unit ${newIndex} - ${defaultCategory}`,
       category: defaultCategory,
       notes: '',
@@ -55,12 +62,27 @@ export default function StepUnitSnips({
     setActivePageId(newPage.id);
   };
 
+  // Duplicate a unit page for another variant
+  const handleDuplicatePage = (page, targetVarId) => {
+    const targetVar = variants.find(v => v.id === targetVarId);
+    const varLabel = targetVar ? targetVar.name : 'All Variants';
+    const newPage = {
+      ...page,
+      id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+      variantId: targetVarId,
+      title: `${page.title} (${varLabel})`
+    };
+    setUnitPages(prev => [...prev, newPage]);
+    setActivePageId(newPage.id);
+    showToast(`📋 Duplicated unit page for ${varLabel}!`);
+  };
+
   // Remove a unit page
   const handleRemovePage = (pageId) => {
     if (unitPages.length <= 1) {
-      // Just clear the single page
       setUnitPages([{
         id: `unit_${Date.now()}`,
+        variantId: 'all',
         title: 'Unit 1 - Modular Kitchen',
         category: 'Modular Kitchen',
         notes: '',
@@ -102,7 +124,9 @@ export default function StepUnitSnips({
   const handleClearFile = (pageId) => {
     setUnitPages(prev => prev.map(p => {
       if (p.id === pageId) {
-        if (p.previewUrl) URL.revokeObjectURL(p.previewUrl);
+        if (p.previewUrl && !p.previewUrl.startsWith('/uploads/')) {
+          URL.revokeObjectURL(p.previewUrl);
+        }
         return { ...p, file: null, previewUrl: null };
       }
       return p;
@@ -228,9 +252,67 @@ export default function StepUnitSnips({
         </div>
       </div>
 
+      {/* Variant Filter Tabs & Placement Info */}
+      <div className="space-y-3">
+        {selectedVariants.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
+              Filter By Variant:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedVariantFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                selectedVariantFilter === 'all'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              All Units ({unitPages.length})
+            </button>
+            {selectedVariants.map(v => {
+              const count = unitPages.filter(p => p.variantId === v.id || (!p.variantId && selectedVariantFilter === 'all') || p.variantId === 'all').length;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => setSelectedVariantFilter(v.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    selectedVariantFilter === v.id
+                      ? 'bg-amber-500 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{v.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    selectedVariantFilter === v.id ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Slide Sequencing:</strong> Unit breakdown pages will be inserted directly <strong>AFTER</strong> the specification page and <strong>BEFORE</strong> the quotation page for their designated variant.
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* List of Unit Pages */}
       <div className="space-y-5">
-        {unitPages.map((page, index) => {
+        {unitPages
+          .filter(page => {
+            if (selectedVariantFilter === 'all') return true;
+            return page.variantId === selectedVariantFilter || page.variantId === 'all' || !page.variantId;
+          })
+          .map((page, index) => {
           return (
             <div
               key={page.id}
@@ -260,7 +342,22 @@ export default function StepUnitSnips({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {/* Variant Assignment Selector */}
+                  <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 rounded-lg px-2.5 py-1">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase">Target Variant:</span>
+                    <select
+                      value={page.variantId || 'all'}
+                      onChange={(e) => handleUpdatePage(page.id, 'variantId', e.target.value)}
+                      className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                    >
+                      <option value="all">🌟 All Selected Variants</option>
+                      {selectedVariants.map(v => (
+                        <option key={v.id} value={v.id}>🎯 {v.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Category Selection */}
                   <select
                     value={page.category}
@@ -271,6 +368,26 @@ export default function StepUnitSnips({
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+
+                  {/* Duplicate to Other Variant */}
+                  {selectedVariants.length > 1 && (
+                    <select
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleDuplicatePage(page, e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="text-xs font-medium text-amber-700 bg-amber-50/50 hover:bg-amber-100/50 border border-amber-200 rounded-lg px-2 py-1.5 focus:outline-none cursor-pointer"
+                      title="Duplicate this page for another variant"
+                    >
+                      <option value="" disabled>📋 Copy to Variant...</option>
+                      {selectedVariants.map(v => (
+                        <option key={v.id} value={v.id}>Copy for {v.name}</option>
+                      ))}
+                    </select>
+                  )}
 
                   {/* Remove Page Button */}
                   <button
@@ -289,8 +406,8 @@ export default function StepUnitSnips({
 
                 {/* Image Upload Area (8 cols on lg) */}
                 <div className="lg:col-span-8">
-                  {page.file ? (
-                    // Uploaded State with Preview
+                  {(page.file || page.previewUrl) ? (
+                    // Uploaded State with Preview (supports re-edited previewUrl)
                     <div className="relative border-2 border-emerald-300 rounded-xl p-3 bg-emerald-50/30 flex flex-col sm:flex-row items-center gap-4">
                       <div className="w-full sm:w-48 h-32 rounded-lg overflow-hidden bg-slate-900/5 shrink-0 flex items-center justify-center border border-slate-200">
                         <img
@@ -305,10 +422,10 @@ export default function StepUnitSnips({
                           <span>Snip Attached Successfully</span>
                         </div>
                         <p className="text-xs font-mono font-medium text-slate-700 truncate">
-                          {page.file.name}
+                          {page.file ? page.file.name : 'Saved Quotation Snip'}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          {(page.file.size / 1024).toFixed(1)} KB • Will be inserted into presentation
+                          {page.file ? `${(page.file.size / 1024).toFixed(1)} KB • ` : ''}Will be inserted after {page.variantId && page.variantId !== 'all' ? (variants.find(v => v.id === page.variantId)?.name || 'variant') : 'each variant'} specs
                         </p>
 
                         <div className="flex items-center gap-2 pt-2">

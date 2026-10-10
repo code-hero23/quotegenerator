@@ -5,7 +5,8 @@ export default function Header({
   onOpenHistory, 
   historyCount, 
   activeUser, 
-  onLogout 
+  onLogout,
+  onOpenUserManagement
 }) {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs">
@@ -41,10 +42,22 @@ export default function Header({
             <span className="text-emerald-600 font-bold">• 29 Slides</span>
           </div>
 
+          {/* Admin Architects Management Button */}
+          {activeUser?.role === 'admin' && (
+            <button
+              onClick={onOpenUserManagement}
+              className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              title="Manage Feasibility Architects & User Access"
+            >
+              <User className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="hidden sm:inline">👥 Architects</span>
+            </button>
+          )}
+
           {/* Quotes Vault / History Button */}
           <button
             onClick={onOpenHistory}
-            className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs transition-colors shrink-0"
+            className="flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs transition-colors shrink-0 cursor-pointer"
             title="Quotation Vault & History"
           >
             <History className="w-4 h-4 text-amber-600 shrink-0" />
@@ -59,16 +72,25 @@ export default function Header({
           {/* User Badge & Logout */}
           {activeUser && (
             <div className="flex items-center space-x-1.5 sm:space-x-2 pl-1.5 sm:pl-2 border-l border-slate-200">
-              <div className="flex items-center space-x-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs shrink-0 max-w-[110px] sm:max-w-none">
+              <div className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs shrink-0 max-w-[120px] sm:max-w-none ${
+                activeUser.role === 'admin'
+                  ? 'bg-amber-50 border-amber-200 text-amber-900'
+                  : 'bg-sky-50 border-sky-200 text-sky-900'
+              }`}>
                 <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span className="font-semibold text-slate-800 capitalize truncate">
-                  {activeUser.username || activeUser.name || 'Admin'}
-                </span>
+                <div className="truncate">
+                  <span className="font-bold capitalize block leading-tight truncate">
+                    {activeUser.name || activeUser.username}
+                  </span>
+                  <span className="text-[9px] uppercase font-semibold text-slate-500 block leading-tight">
+                    {activeUser.role === 'admin' ? 'Administrator' : 'Feasibility Architect'}
+                  </span>
+                </div>
               </div>
 
               <button
                 onClick={onLogout}
-                className="flex items-center space-x-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-medium transition-colors shrink-0"
+                className="flex items-center space-x-1 p-2 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-medium transition-colors shrink-0 cursor-pointer"
                 title="Sign Out"
               >
                 <LogOut className="w-3.5 h-3.5" />

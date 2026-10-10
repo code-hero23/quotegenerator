@@ -1,16 +1,27 @@
 import React, { useState } from 'react';
 import { 
   X, History, Download, Calendar, Search, 
-  MapPin, Phone, Check, Eye, FileText, UserCheck, User, Layers 
+  MapPin, Phone, Check, Eye, FileText, UserCheck, User, Layers,
+  Edit3, Trash2, ShieldCheck, Compass
 } from 'lucide-react';
 
-export default function QuotationHistoryModal({ isOpen, onClose, quotations = [], onPreviewPdf }) {
+export default function QuotationHistoryModal({ 
+  isOpen, 
+  onClose, 
+  quotations = [], 
+  onPreviewPdf,
+  activeUser,
+  onReEdit,
+  onDelete
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [selectedArchitect, setSelectedArchitect] = useState('all');
   const [copiedId, setCopiedId] = useState(null);
 
   if (!isOpen) return null;
+
+  const isAdmin = activeUser?.role === 'admin';
 
   // Extract all unique architects
   const architectsList = Array.from(
@@ -70,12 +81,22 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                 <h3 className="text-base sm:text-xl font-bold text-slate-900 font-['Outfit'] truncate">
                   Quotation Vault
                 </h3>
-                <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 shrink-0">
-                  {totalCount} Generated
-                </span>
+                {isAdmin ? (
+                  <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200 flex items-center gap-1 shrink-0">
+                    <ShieldCheck className="w-3 h-3 text-amber-700" />
+                    <span>Admin View ({totalCount} Quotes)</span>
+                  </span>
+                ) : (
+                  <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold border border-sky-200 flex items-center gap-1 shrink-0">
+                    <Compass className="w-3 h-3 text-sky-700" />
+                    <span>My Quotes ({totalCount})</span>
+                  </span>
+                )}
               </div>
               <p className="hidden sm:block text-xs text-slate-500 font-medium truncate">
-                Track architect-generated presentations and download exported presentations (.pptx) or documents (.pdf)
+                {isAdmin 
+                  ? 'Track and govern all architect-generated quotations across the Cookscape studio.' 
+                  : 'View and re-edit your generated presentations and export records.'}
               </p>
             </div>
           </div>
@@ -91,19 +112,21 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
         {/* Analytics Highlights Banner */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 bg-slate-50/70 border-b border-slate-200 text-xs">
           <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-            <span className="text-slate-500 block mb-0.5 font-medium">Total Presentations</span>
+            <span className="text-slate-500 block mb-0.5 font-medium">Visible Presentations</span>
             <span className="text-lg font-bold text-slate-900 font-['Outfit']">{totalCount} Quotes</span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs">
-            <span className="text-slate-500 block mb-0.5 font-medium">Active Architects</span>
+            <span className="text-slate-500 block mb-0.5 font-medium">
+              {isAdmin ? 'Active Architects' : 'Account Role'}
+            </span>
             <span className="text-lg font-bold text-amber-800 font-['Outfit']">
-              {architectsList.length} {architectsList.length === 1 ? 'Architect' : 'Architects'}
+              {isAdmin ? `${architectsList.length} Architects` : 'Feasibility Architect'}
             </span>
           </div>
           <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs col-span-2 sm:col-span-1">
-            <span className="text-slate-500 block mb-0.5 font-medium">Available Formats</span>
+            <span className="text-slate-500 block mb-0.5 font-medium">Quick Actions</span>
             <span className="text-emerald-700 font-bold flex items-center gap-1.5 mt-1">
-              <Check className="w-4 h-4" /> PPTX + Direct Export PDF
+              <Check className="w-4 h-4" /> Re-edit + Direct Download
             </span>
           </div>
         </div>
@@ -122,8 +145,8 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
           </div>
 
           <div className="flex flex-wrap items-center space-x-2 w-full sm:w-auto justify-end gap-2">
-            {/* Architect Dropdown Filter */}
-            {architectsList.length > 0 && (
+            {/* Architect Dropdown Filter (Admin only) */}
+            {isAdmin && architectsList.length > 0 && (
               <select
                 value={selectedArchitect}
                 onChange={(e) => setSelectedArchitect(e.target.value)}
@@ -166,12 +189,12 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
               <FileText className="w-14 h-14 text-slate-400 mx-auto" />
               <h4 className="text-base font-semibold text-slate-700">No matching quotation records found</h4>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                {searchQuery ? 'Try clearing your search query or filters.' : 'Generate your first quotation presentation using the 4-step wizard.'}
+                {searchQuery ? 'Try clearing your search query or filters.' : 'Generate your quotation presentation using the 6-step wizard.'}
               </p>
             </div>
           ) : (
             filteredQuotations.map((quote) => {
-              const client = quote.client || {};
+              const client = quote.client || quote.clientInfo || {};
               const architect = quote.architect || quote.repInfo?.name || quote.user?.name || 'Cookscape Representative';
               const variants = Array.isArray(quote.selectedVariants) 
                 ? quote.selectedVariants 
@@ -225,10 +248,10 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                               {client.location}
                             </span>
                           )}
-                          {client.contactNumber && (
+                          {(client.contactNumber || client.contact) && (
                             <span className="flex items-center gap-1">
                               <Phone className="w-3.5 h-3.5 text-slate-400" />
-                              {client.contactNumber}
+                              {client.contactNumber || client.contact}
                             </span>
                           )}
                         </div>
@@ -251,17 +274,29 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                     </div>
                   </div>
 
-                  {/* Right Column: ACTIONS (VIEW PDF + DOWNLOAD PDF + DOWNLOAD PPTX) */}
-                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-auto shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                  {/* Right Column: ACTIONS */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-2 w-full lg:w-48 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                    
+                    {/* Re-edit Quote Button */}
+                    <button
+                      type="button"
+                      onClick={() => onReEdit && onReEdit(quote)}
+                      className="w-full px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-2xs"
+                      title="Load quote details & snips back into wizard to edit"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                      <span>✏️ Re-edit Quote</span>
+                    </button>
+
                     {/* View PDF Button */}
                     {pdfViewUrl && (
                       <button
                         type="button"
                         onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${client.name || 'Client'} Presentation PDF`)}
-                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                        className="w-full px-3.5 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-cyan-600" />
-                        <span>👁️ View PDF</span>
+                        <span>View PDF</span>
                       </button>
                     )}
 
@@ -270,7 +305,7 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                       <a
                         href={pdfUrl}
                         download
-                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"
+                        className="w-full px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors shadow-2xs cursor-pointer"
                       >
                         <FileText className="w-3.5 h-3.5 text-cyan-600" />
                         <span>Download PDF</span>
@@ -282,12 +317,30 @@ export default function QuotationHistoryModal({ isOpen, onClose, quotations = []
                       <a
                         href={pptxUrl}
                         download
-                        className="w-full sm:w-auto px-3.5 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-2xs cursor-pointer"
+                        className="w-full px-3.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 text-xs font-medium flex items-center justify-center space-x-1.5 transition-all shadow-2xs cursor-pointer"
                       >
-                        <Download className="w-3.5 h-3.5 text-amber-700" />
+                        <Download className="w-3.5 h-3.5 text-slate-600" />
                         <span>Download PPTX</span>
                       </a>
                     )}
+
+                    {/* Admin-Only Delete Button */}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Permanently delete quotation "${quote.quotationNumber}" for ${client.name || 'Client'}? This will permanently delete the presentation files from storage.`)) {
+                            onDelete && onDelete(quote.id);
+                          }
+                        }}
+                        className="w-full px-3.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer mt-1"
+                        title="Permanently remove quotation (Admin Only)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Delete Quote</span>
+                      </button>
+                    )}
+
                   </div>
 
                 </div>

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import axios from 'axios';
+import { User, Lock, ArrowRight, AlertCircle, Eye, EyeOff, ShieldCheck, Compass, Loader2 } from 'lucide-react';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -19,11 +21,25 @@ export default function LoginPage({ onLogin }) {
       return;
     }
 
-    onLogin({
-      username: trimmedUser,
-      name: trimmedUser === 'admin' ? 'Cookscape Representative' : trimmedUser,
-      role: 'Sales Representative'
-    });
+    setLoading(true);
+    try {
+      const res = await axios.post('/api/users/login', {
+        username: trimmedUser,
+        password: trimmedPass
+      });
+
+      if (res.data && res.data.success && res.data.user) {
+        onLogin(res.data.user);
+      } else {
+        throw new Error(res.data.error || 'Authentication failed');
+      }
+    } catch (err) {
+      console.warn('Login failure:', err);
+      const msg = err.response?.data?.error || err.message || 'Invalid username or password.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,19 +60,19 @@ export default function LoginPage({ onLogin }) {
             COOKSCAPE STUDIO
           </h2>
           <p className="text-sm text-amber-700 font-semibold mt-0.5">
-            Quotation Generator Portal
+            Quotation & Feasibility Portal
           </p>
         </div>
       </div>
 
-      {/* Simple Login Card */}
+      {/* Login Card */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="bg-white p-8 sm:p-10 space-y-6 border border-slate-200 rounded-2xl shadow-xl">
           
           <div>
             <h3 className="text-lg font-bold text-slate-900">Sign In</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Enter your username and password to continue
+              Enter your credentials to access the quotation workspace
             </p>
           </div>
 
@@ -81,6 +97,7 @@ export default function LoginPage({ onLogin }) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="form-input pl-11"
+                  disabled={loading}
                 />
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -97,6 +114,7 @@ export default function LoginPage({ onLogin }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="form-input pl-11 pr-11"
+                  disabled={loading}
                 />
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <button
@@ -109,28 +127,64 @@ export default function LoginPage({ onLogin }) {
               </div>
             </div>
 
-            {/* Quick Demo Credentials Hint */}
-            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-              <span>Demo login: <code className="text-amber-700 font-mono font-semibold">admin</code> / <code className="text-amber-700 font-mono font-semibold">admin123</code></span>
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername('admin');
-                  setPassword('admin123');
-                }}
-                className="text-amber-600 hover:underline font-semibold text-[11px]"
-              >
-                Auto-fill
-              </button>
+            {/* Role Demo Credential Presets */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Quick Sign In Presets</div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-1.5 text-slate-700">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="font-semibold">Administrator:</span>
+                  <code className="text-amber-800 font-mono">admin</code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('admin');
+                    setPassword('admin123');
+                  }}
+                  className="text-amber-600 hover:text-amber-800 font-semibold text-[11px] underline"
+                >
+                  Auto-fill
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200">
+                <div className="flex items-center space-x-1.5 text-slate-700">
+                  <Compass className="w-3.5 h-3.5 text-sky-600" />
+                  <span className="font-semibold">Feasibility Architect:</span>
+                  <code className="text-sky-800 font-mono">abishek</code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsername('abishek');
+                    setPassword('arch123');
+                  }}
+                  className="text-sky-600 hover:text-sky-800 font-semibold text-[11px] underline"
+                >
+                  Auto-fill
+                </button>
+              </div>
             </div>
 
             {/* Sign In Button */}
             <button
               type="submit"
-              className="btn-gold w-full py-3.5 text-base shadow-lg shadow-amber-500/20 mt-2"
+              disabled={loading}
+              className="btn-gold w-full py-3.5 text-base shadow-lg shadow-amber-500/20 mt-2 flex items-center justify-center space-x-2"
             >
-              <span>Sign In</span>
-              <ArrowRight className="w-4 h-4" />
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Verifying Credentials...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
 
           </form>
@@ -141,3 +195,4 @@ export default function LoginPage({ onLogin }) {
     </div>
   );
 }
+

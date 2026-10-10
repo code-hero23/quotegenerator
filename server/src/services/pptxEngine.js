@@ -272,93 +272,129 @@ class PptxEngine {
       }
     }
 
-    // 2.5 Insert Unit Snips Slides (if any unit pages are uploaded)
+    // 2.5 Insert Unit Snips Slides per Variant (reflects on each variant after specification and before quotation)
     if (Array.isArray(unitSnips) && unitSnips.length > 0) {
       const templateSlideXml = baseQuotationTemplateXml;
-      let insertIndex = keptSlides.findIndex(s => s.displayIndex > 6);
-      if (insertIndex === -1) insertIndex = keptSlides.length;
+      let globalUnitCounter = 0;
 
-      for (let uIdx = 0; uIdx < unitSnips.length; uIdx++) {
-        const u = unitSnips[uIdx];
-        const unitSlideTarget = `slides/slide_unit_${uIdx + 1}.xml`;
-        const unitFullZipPath = `ppt/${unitSlideTarget}`;
-        const unitSlideRelsZipPath = `ppt/slides/_rels/slide_unit_${uIdx + 1}.xml.rels`;
-        const unitRId = `rIdUnit_${uIdx + 1}`;
-        const unitSldId = String(30000 + uIdx);
+      // Group unit snips by variantId:
+      // If a unit snip has variantId === 'all' or no variantId, it applies to all selected variants.
+      // If it has a specific variantId, it applies only to that variant.
+      for (let vIdx = 0; vIdx < allVariants.length; vIdx++) {
+        const v = allVariants[vIdx];
+        const vId = String(v.id);
+        if (!selectedVariantIdSet.has(vId)) continue;
 
-        const uTitle = escapeXml(u.title || `Unit ${uIdx + 1} Breakdown`);
-        const uCat = escapeXml(u.category || 'Unit Specification');
-
-        let unitXml = templateSlideXml;
-        unitXml = unitXml.replace(
-          /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
-          `<a:t>${uTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT"/></a:rPr><a:t>${uCat}</a:t>`
-        );
-
-        let unitRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
-
-        const uFilePath = u.filePath || u.path;
-        let uBuffer = null;
-        let uExt = 'png';
-        if (Buffer.isBuffer(uFilePath)) {
-          uBuffer = uFilePath;
-        } else if (typeof uFilePath === 'string' && fs.existsSync(uFilePath)) {
-          uBuffer = fs.readFileSync(uFilePath);
-          uExt = path.extname(uFilePath).replace('.', '') || 'png';
+        let indices = v.slideIndices;
+        if (typeof indices === 'string') {
+          try { indices = JSON.parse(indices); } catch (e) { indices = []; }
         }
+        if (!Array.isArray(indices) || indices.length < 2) continue;
 
-        if (uBuffer) {
-          const mediaFileName = `unit_snip_${uIdx + 1}_${Date.now()}.${uExt}`;
-          zip.file(`ppt/media/${mediaFileName}`, uBuffer);
+        // The quotation slide is the last slide of the variant (e.g. slide 9 for Surabhi, slide 12 for Capricoast)
+        const quoteSlideNum = Number(indices[indices.length - 1]);
 
-          const snipRelId = `rIdUnitImg_${uIdx + 1}`;
-          const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
-          unitRelsXml = unitRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
-
-          const bounds = calculateImageBounds(uBuffer);
-          const picXml = `
-            <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-              <p:nvPicPr>
-                <p:cNvPr id="${12000 + uIdx}" name="UnitSnip_${uIdx + 1}"/>
-                <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
-                <p:nvPr/>
-              </p:nvPicPr>
-              <p:blipFill>
-                <a:blip r:embed="${snipRelId}"/>
-                <a:stretch><a:fillRect/></a:stretch>
-              </p:blipFill>
-              <p:spPr>
-                <a:xfrm>
-                  <a:off x="${bounds.x}" y="${bounds.y}"/>
-                  <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
-                </a:xfrm>
-                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-              </p:spPr>
-            </p:pic>
-          `.trim();
-          unitXml = unitXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
-        }
-
-        zip.file(unitFullZipPath, unitXml);
-        zip.file(unitSlideRelsZipPath, unitRelsXml);
-
-        updatedContentTypes = updatedContentTypes.replace(
-          '</Types>',
-          `<Override PartName="/ppt/${unitSlideTarget}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`
-        );
-
-        updatedPresRelsXml = updatedPresRelsXml.replace(
-          '</Relationships>',
-          `<Relationship Id="${unitRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="${unitSlideTarget}"/></Relationships>`
-        );
-
-        keptSlides.splice(insertIndex + uIdx, 0, {
-          displayIndex: 6.1 + uIdx,
-          id: unitSldId,
-          rId: unitRId,
-          target: unitSlideTarget,
-          fullZipPath: unitFullZipPath
+        // Find matching unit snips for this variant
+        const matchingUnitSnips = unitSnips.filter(u => {
+          if (!u.variantId || u.variantId === 'all') return true;
+          return String(u.variantId) === vId;
         });
+
+        if (matchingUnitSnips.length === 0) continue;
+
+        // Locate the quotation slide in keptSlides to insert right before it
+        let insertPos = keptSlides.findIndex(s => s.displayIndex === quoteSlideNum);
+        if (insertPos === -1) {
+          insertPos = keptSlides.findIndex(s => s.displayIndex >= quoteSlideNum);
+          if (insertPos === -1) insertPos = keptSlides.length;
+        }
+
+        for (let uIdx = 0; uIdx < matchingUnitSnips.length; uIdx++) {
+          globalUnitCounter++;
+          const u = matchingUnitSnips[uIdx];
+          const safeVId = vId.replace(/[^a-zA-Z0-9_-]/g, '_');
+          const unitSlideTarget = `slides/slide_unit_${safeVId}_${uIdx + 1}_${globalUnitCounter}.xml`;
+          const unitFullZipPath = `ppt/${unitSlideTarget}`;
+          const unitSlideRelsZipPath = `ppt/slides/_rels/${path.basename(unitSlideTarget)}.rels`;
+          const unitRId = `rIdUnit_${globalUnitCounter}`;
+          const unitSldId = String(30000 + globalUnitCounter);
+
+          const uTitle = escapeXml(u.title || `Unit ${uIdx + 1} Breakdown`);
+          const vName = escapeXml(v.name || 'Variant');
+          const uCat = escapeXml(u.category ? `${vName} • ${u.category}` : vName);
+
+          let unitXml = templateSlideXml;
+          unitXml = unitXml.replace(
+            /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
+            `<a:t>${uTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT"/></a:rPr><a:t>${uCat}</a:t>`
+          );
+
+          let unitRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
+
+          const uFilePath = u.filePath || u.path;
+          let uBuffer = null;
+          let uExt = 'png';
+          if (Buffer.isBuffer(uFilePath)) {
+            uBuffer = uFilePath;
+          } else if (typeof uFilePath === 'string' && fs.existsSync(uFilePath)) {
+            uBuffer = fs.readFileSync(uFilePath);
+            uExt = path.extname(uFilePath).replace('.', '') || 'png';
+          }
+
+          if (uBuffer) {
+            const mediaFileName = `unit_snip_${safeVId}_${uIdx + 1}_${Date.now()}.${uExt}`;
+            zip.file(`ppt/media/${mediaFileName}`, uBuffer);
+
+            const snipRelId = `rIdUnitImg_${globalUnitCounter}`;
+            const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
+            unitRelsXml = unitRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
+
+            const bounds = calculateImageBounds(uBuffer);
+            const picXml = `
+              <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                <p:nvPicPr>
+                  <p:cNvPr id="${12000 + globalUnitCounter}" name="UnitSnip_${safeVId}_${uIdx + 1}"/>
+                  <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                  <p:nvPr/>
+                </p:nvPicPr>
+                <p:blipFill>
+                  <a:blip r:embed="${snipRelId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </p:blipFill>
+                <p:spPr>
+                  <a:xfrm>
+                    <a:off x="${bounds.x}" y="${bounds.y}"/>
+                    <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </p:spPr>
+              </p:pic>
+            `.trim();
+            unitXml = unitXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+          }
+
+          zip.file(unitFullZipPath, unitXml);
+          zip.file(unitSlideRelsZipPath, unitRelsXml);
+
+          updatedContentTypes = updatedContentTypes.replace(
+            '</Types>',
+            `<Override PartName="/ppt/${unitSlideTarget}" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/></Types>`
+          );
+
+          updatedPresRelsXml = updatedPresRelsXml.replace(
+            '</Relationships>',
+            `<Relationship Id="${unitRId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="${unitSlideTarget}"/></Relationships>`
+          );
+
+          // Insert right before quotation slide
+          keptSlides.splice(insertPos + uIdx, 0, {
+            displayIndex: quoteSlideNum - 0.5 + (uIdx * 0.01),
+            id: unitSldId,
+            rId: unitRId,
+            target: unitSlideTarget,
+            fullZipPath: unitFullZipPath
+          });
+        }
       }
     }
 

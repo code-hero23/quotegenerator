@@ -87,11 +87,24 @@ const defaultVariants = [
 
 const defaultUsers = [
   {
-    id: 'user-sales-rep-1',
-    name: 'Karthik Ramanathan',
+    id: 'user-admin-1',
+    username: 'admin',
+    password: 'admin123',
+    name: 'Administrator',
     contactNumber: '94444 88888',
-    email: 'karthik@cookscape.in',
-    role: 'Senior Design Consultant'
+    email: 'admin@cookscape.in',
+    role: 'admin',
+    title: 'System Administrator'
+  },
+  {
+    id: 'user-sales-rep-1',
+    username: 'abishek',
+    password: 'arch123',
+    name: 'Mr. Abishek',
+    contactNumber: '93611 84787',
+    email: 'designs.cookscape@gmail.com',
+    role: 'architect',
+    title: 'Feasibility Architect'
   }
 ];
 
@@ -113,14 +126,51 @@ function loadLocalStore() {
     try {
       const parsed = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
       if (parsed && Array.isArray(parsed.variants)) {
-        // Strip prices from all variants if present
         let updated = false;
+
+        // Strip prices from all variants if present
         parsed.variants.forEach(v => {
           if ('price' in v) {
             delete v.price;
             updated = true;
           }
         });
+
+        // Ensure users array exists with admin and proper roles
+        if (!Array.isArray(parsed.users) || parsed.users.length === 0) {
+          parsed.users = [...defaultUsers];
+          updated = true;
+        } else {
+          // Ensure admin user exists
+          const hasAdmin = parsed.users.some(u => u.role === 'admin' || u.username === 'admin');
+          if (!hasAdmin) {
+            parsed.users.unshift(defaultUsers[0]);
+            updated = true;
+          }
+          // Ensure every user has username, password, role
+          parsed.users.forEach((u, i) => {
+            if (u.name && u.name.toLowerCase().includes('abishek')) {
+              u.username = 'abishek';
+              u.role = 'architect';
+              u.title = 'Feasibility Architect';
+              u.password = 'arch123';
+              updated = true;
+            } else if (!u.username) {
+              u.username = u.name ? u.name.toLowerCase().replace(/[^a-z0-9]/g, '') : `user${i}`;
+              updated = true;
+            }
+            if (!u.password) {
+              u.password = 'arch123';
+              updated = true;
+            }
+            if (!u.role || (u.username !== 'admin' && u.role !== 'architect')) {
+              u.role = u.username === 'admin' ? 'admin' : 'architect';
+              u.title = u.role === 'admin' ? 'Administrator' : 'Feasibility Architect';
+              updated = true;
+            }
+          });
+        }
+
         // Ensure each quotation has architect field populated
         if (Array.isArray(parsed.quotations)) {
           parsed.quotations.forEach(q => {
@@ -130,6 +180,7 @@ function loadLocalStore() {
             }
           });
         }
+
         if (updated) {
           saveLocalStore(parsed);
         }
@@ -175,7 +226,97 @@ const dbService = {
 
   async getUsers() {
     const store = loadLocalStore();
-    return store.users || defaultUsers;
+    // Return users without exposing raw passwords in public lists
+    return (store.users || defaultUsers).map(u => ({
+      id: u.id,
+      username: u.username,
+      name: u.name,
+      contactNumber: u.contactNumber,
+      email: u.email,
+      role: u.role || 'architect',
+      title: u.title || (u.role === 'admin' ? 'Administrator' : 'Feasibility Architect'),
+      createdAt: u.createdAt
+    }));
+  },
+
+  async authenticateUser(username, password) {
+    const store = loadLocalStore();
+    const users = store.users || defaultUsers;
+    const cleanUser = String(username || '').trim().toLowerCase();
+    const cleanPass = String(password || '').trim();
+
+    const matched = users.find(u => 
+      u.username && u.username.toLowerCase() === cleanUser && String(u.password) === cleanPass
+    );
+
+    if (!matched) return null;
+
+    return {
+      id: matched.id,
+      username: matched.username,
+      name: matched.name,
+      contactNumber: matched.contactNumber,
+      email: matched.email,
+      role: matched.role || 'architect',
+      title: matched.title || (matched.role === 'admin' ? 'Administrator' : 'Feasibility Architect')
+    };
+  },
+
+  async createUser(userData) {
+    const store = loadLocalStore();
+    if (!store.users) store.users = [...defaultUsers];
+
+    const cleanUsername = String(userData.username || '').trim().toLowerCase();
+    if (!cleanUsername) throw new Error('Username is required.');
+    if (!userData.password) throw new Error('Password is required.');
+
+    const exists = store.users.some(u => u.username && u.username.toLowerCase() === cleanUsername);
+    if (exists) {
+      throw new Error(`Username "${cleanUsername}" is already taken. Please choose another.`);
+    }
+
+    const newUser = {
+      id: `user-arch-${Date.now()}`,
+      username: cleanUsername,
+      password: String(userData.password).trim(),
+      name: userData.name || userData.username,
+      contactNumber: userData.contactNumber || 'N/A',
+      email: userData.email || '',
+      role: userData.role || 'architect',
+      title: userData.role === 'admin' ? 'Administrator' : 'Feasibility Architect',
+      createdAt: new Date()
+    };
+
+    store.users.push(newUser);
+    saveLocalStore(store);
+
+    return {
+      id: newUser.id,
+      username: newUser.username,
+      name: newUser.name,
+      contactNumber: newUser.contactNumber,
+      email: newUser.email,
+      role: newUser.role,
+      title: newUser.title,
+      createdAt: newUser.createdAt
+    };
+  },
+
+  async deleteUser(userId) {
+    const store = loadLocalStore();
+    if (!store.users) return false;
+
+    const targetIndex = store.users.findIndex(u => u.id === userId);
+    if (targetIndex === -1) return false;
+
+    // Do not allow deleting the main admin account
+    if (store.users[targetIndex].role === 'admin' && store.users[targetIndex].username === 'admin') {
+      throw new Error('Default Administrator account cannot be deleted.');
+    }
+
+    store.users.splice(targetIndex, 1);
+    saveLocalStore(store);
+    return true;
   },
 
   async getClients() {
@@ -222,8 +363,8 @@ const dbService = {
       architect: architectName,
       createdAt: new Date(),
       updatedAt: new Date(),
-      client: (store.clients || []).find(c => c.id === quoteData.clientId) || { name: 'Client' },
-      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: architectName, role: 'Design Architect' }
+      client: (store.clients || []).find(c => c.id === quoteData.clientId) || { name: quoteData.clientInfo?.name || 'Client' },
+      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: architectName, role: quoteData.userRole || 'architect' }
     };
 
     store.quotations.unshift(newQuote);
@@ -231,9 +372,47 @@ const dbService = {
     return newQuote;
   },
 
-  async getQuotations() {
+  async getQuotations({ userId, role } = {}) {
     const store = loadLocalStore();
-    return store.quotations || [];
+    const all = store.quotations || [];
+
+    // Admin can view all quotations
+    if (role === 'admin') {
+      return all;
+    }
+
+    // Feasibility Architect can only view quotations created by them
+    if (role === 'architect' && userId) {
+      const targetUser = (store.users || []).find(u => u.id === userId);
+      const targetName = targetUser?.name?.toLowerCase();
+      const targetEmail = targetUser?.email?.toLowerCase();
+      const targetUsername = targetUser?.username?.toLowerCase();
+
+      return all.filter(q => {
+        if (q.userId === userId) return true;
+        if (q.user?.id === userId) return true;
+        const qArch = (q.architect || q.repInfo?.name || q.user?.name || '').toLowerCase();
+        if (targetName && qArch.includes(targetName)) return true;
+        if (targetUsername && qArch.includes(targetUsername)) return true;
+        const qEmail = (q.repInfo?.email || q.user?.email || '').toLowerCase();
+        if (targetEmail && qEmail && qEmail === targetEmail) return true;
+        return false;
+      });
+    }
+
+    return all;
+  },
+
+  async deleteQuotation(id) {
+    const store = loadLocalStore();
+    if (!store.quotations) return null;
+
+    const index = store.quotations.findIndex(q => q.id === id);
+    if (index === -1) return null;
+
+    const removed = store.quotations.splice(index, 1)[0];
+    saveLocalStore(store);
+    return removed;
   }
 };
 

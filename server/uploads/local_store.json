@@ -5,7 +5,6 @@
       "name": "SURABHI - LL ELITE",
       "category": "Premium Marine Interior",
       "description": "High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.",
-      "price": 345000,
       "specs": {
         "carcassMaterial": "Marine Ply, BSL - BWR / Prelam Aqua Shield MDF-R",
         "carcassFinish": "Frosty White",
@@ -26,7 +25,6 @@
       "name": "CAPRICOAST MATTE",
       "category": "Ultra Matte Contemporary",
       "description": "Greenply BWP 710 Grade carcass with ultra-smooth matte laminate shutters and Ebco fittings.",
-      "price": 395000,
       "specs": {
         "carcassMaterial": "GREENPLY BWP 710 Grade",
         "carcassFinish": "Frosty White / Grey Linum",
@@ -47,7 +45,6 @@
       "name": "CAPRICOST GLOSSY",
       "category": "High Gloss Elegance",
       "description": "High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.",
-      "price": 430000,
       "specs": {
         "carcassMaterial": "GREENPLY BWP 710 Grade",
         "carcassFinish": "Frosty White",
@@ -68,7 +65,6 @@
       "name": "ELEGANT SURABHI",
       "category": "Architectural Grade Luxury",
       "description": "BWP 710 Gurjan Ply with super matte 1mm branded laminate and Grade 1 soft-closing hardware.",
-      "price": 520000,
       "specs": {
         "carcassMaterial": "GREENPLY BWP 710 Grade with both side Laminate",
         "carcassFinish": "Premium Frosty Linum",
@@ -89,7 +85,6 @@
       "name": "4X TUFF GLOSS",
       "category": "Scratch & Stain Proof Signature",
       "description": "Engineered Merino MR+ / Royal Touche gloss shutters with anti-scratch and anti-stain shield.",
-      "price": 580000,
       "specs": {
         "carcassMaterial": "GREENPLY BWP 710 Grade",
         "carcassFinish": "Frosty White Deluxe",
@@ -108,11 +103,24 @@
   ],
   "users": [
     {
+      "id": "user-admin-1",
+      "username": "admin",
+      "password": "admin123",
+      "name": "Administrator",
+      "contactNumber": "94444 88888",
+      "email": "admin@cookscape.in",
+      "role": "admin",
+      "title": "System Administrator"
+    },
+    {
       "id": "user-sales-rep-1",
       "name": "Mr. Abishek",
       "contactNumber": "93611 84787",
       "email": "designs.cookscape@gmail.com",
-      "role": "Senior Design Consultant"
+      "role": "architect",
+      "username": "abishek",
+      "password": "arch123",
+      "title": "Feasibility Architect"
     }
   ],
   "clients": [
@@ -248,7 +256,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791608384719",
@@ -320,7 +329,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791577635309",
@@ -393,7 +403,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791575726974",
@@ -486,7 +497,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791575662595",
@@ -579,7 +591,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791574030719",
@@ -652,7 +665,8 @@
         "contactNumber": "93611 84787",
         "email": "designs.cookscape@gmail.com",
         "role": "Senior Design Consultant"
-      }
+      },
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791572831762",
@@ -725,7 +739,8 @@
       },
       "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Karthik_10_10_2026_QT-826558.pdf",
       "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Karthik_10_10_2026_QT-826558.pdf",
-      "pdfFileSize": 3146286
+      "pdfFileSize": 3146286,
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791572670553",
@@ -776,7 +791,8 @@
       },
       "pdfDownloadUrl": "/api/quotations/download/Quote_Mr__Aravindan_10_10_2026_QT-665455.pdf",
       "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mr__Aravindan_10_10_2026_QT-665455.pdf",
-      "pdfFileSize": 2829022
+      "pdfFileSize": 2829022,
+      "architect": "Mr. Abishek"
     },
     {
       "id": "quote-1791572105864",
@@ -849,7 +865,8 @@
       },
       "pdfDownloadUrl": "/api/quotations/download/Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pdf",
       "pdfPath": "C:\\Users\\Aravind-Techie\\Desktop\\rn sir\\server\\uploads\\generated\\Quote_Mrs__Sunita___Rajesh_Nair_10_10_2026_QT-101847.pdf",
-      "pdfFileSize": 2945101
+      "pdfFileSize": 2945101,
+      "architect": "Mr. Abishek"
     }
   ]
 }

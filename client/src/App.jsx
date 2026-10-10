@@ -11,7 +11,8 @@ import StepReviewGenerate from './components/StepReviewGenerate';
 import QuotationHistoryModal from './components/QuotationHistoryModal';
 import PdfViewerModal from './components/PdfViewerModal';
 import LoginPage from './components/LoginPage';
-import { AlertCircle } from 'lucide-react';
+import UserManagementModal from './components/UserManagementModal';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const API_BASE = '/api';
 
@@ -154,25 +155,34 @@ export default function App() {
   const [generationResult, setGenerationResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // When active user changes, sync with repInfo
+  const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [successToast, setSuccessToast] = useState(null);
+
+  // When active user changes, sync with repInfo & fetch scoped quotations
   useEffect(() => {
     if (activeUser) {
       setRepInfo({
-        name: activeUser.name,
-        contact: activeUser.contact,
-        email: activeUser.email
+        name: activeUser.name || activeUser.username,
+        contact: activeUser.contactNumber || activeUser.contact || 'N/A',
+        email: activeUser.email || ''
       });
       localStorage.setItem('cookscape_active_user', JSON.stringify(activeUser));
+      fetchQuotations(activeUser);
     } else {
       localStorage.removeItem('cookscape_active_user');
+      setQuotations([]);
     }
   }, [activeUser]);
 
   useEffect(() => {
     fetchHealth();
     fetchVariants();
-    fetchQuotations();
   }, []);
+
+  const showToast = (message) => {
+    setSuccessToast(message);
+    setTimeout(() => setSuccessToast(null), 5000);
+  };
 
   const fetchHealth = async () => {
     try {
@@ -196,9 +206,10 @@ export default function App() {
     }
   };
 
-  const fetchQuotations = async () => {
+  const fetchQuotations = async (user = activeUser) => {
     try {
-      const res = await axios.get(`${API_BASE}/quotations`);
+      const params = user ? { userId: user.id, role: user.role } : {};
+      const res = await axios.get(`${API_BASE}/quotations`, { params });
       if (res.data && res.data.data) {
         setQuotations(res.data.data);
       }
@@ -209,10 +220,108 @@ export default function App() {
 
   const handleLogin = (user) => {
     setActiveUser(user);
+    fetchQuotations(user);
   };
 
   const handleLogout = () => {
     setActiveUser(null);
+  };
+
+  // Re-edit a past generated quotation
+  const handleReEditQuote = (quote) => {
+    if (!quote) return;
+
+    // 1. Restore client details
+    const c = quote.clientInfo || quote.client || {};
+    setClientInfo({
+      name: c.name || '',
+      contact: c.contactNumber || c.contact || '',
+      location: c.location || '',
+      email: c.email || '',
+      date: c.date || (quote.date ? new Date(quote.date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'))
+    });
+
+    // 2. Restore representative details
+    if (quote.repInfo) {
+      setRepInfo({
+        name: quote.repInfo.name || (activeUser ? activeUser.name : ''),
+        contact: quote.repInfo.contact || (activeUser ? activeUser.contactNumber : ''),
+        email: quote.repInfo.email || (activeUser ? activeUser.email : '')
+      });
+    }
+
+    // 3. Restore selected variants
+    if (quote.selectedVariantIds && Array.isArray(quote.selectedVariantIds) && quote.selectedVariantIds.length > 0) {
+      setSelectedVariantIds(quote.selectedVariantIds);
+    } else if (quote.selectedVariants) {
+      const vids = Array.isArray(quote.selectedVariants)
+        ? quote.selectedVariants.map(v => (typeof v === 'string' ? v : v.id)).filter(Boolean)
+        : [];
+      if (vids.length > 0) setSelectedVariantIds(vids);
+    }
+
+    // 4. Restore Unit Pages
+    if (quote.unitPagesMetadata && Array.isArray(quote.unitPagesMetadata) && quote.unitPagesMetadata.length > 0) {
+      setUnitPages(quote.unitPagesMetadata.map((u, i) => ({
+        id: u.id || `unit-${i + 1}`,
+        variantId: u.variantId || 'all',
+        title: u.title || `Unit ${i + 1}`,
+        category: u.category || 'Modular Kitchen',
+        notes: u.notes || '',
+        file: null,
+        previewUrl: u.previewUrl || null,
+        filePath: u.filePath || null
+      })));
+    }
+
+    // 5. Restore Accessory Pages
+    if (quote.accessoryPagesMetadata && Array.isArray(quote.accessoryPagesMetadata) && quote.accessoryPagesMetadata.length > 0) {
+      setAccessoryPages(quote.accessoryPagesMetadata.map((a, i) => ({
+        id: a.id || `acc-${i + 1}`,
+        title: a.title || `Accessory Page ${i + 1}`,
+        category: a.category || 'Hardware Specifications',
+        notes: a.notes || '',
+        file: null,
+        previewUrl: a.previewUrl || null,
+        filePath: a.filePath || null
+      })));
+    }
+
+    // 6. Restore Quotation Snip Files
+    if (quote.snipsMetadata && typeof quote.snipsMetadata === 'object') {
+      const restoredSnips = {};
+      Object.entries(quote.snipsMetadata).forEach(([vid, items]) => {
+        restoredSnips[vid] = (Array.isArray(items) ? items : [items]).map(item => ({
+          file: null,
+          previewUrl: typeof item === 'string' ? item : (item.previewUrl || null),
+          filePath: item.filePath || null
+        }));
+      });
+      setSnipFiles(restoredSnips);
+    }
+
+    // Reset generation state & navigate to Step 1
+    setGenerationResult(null);
+    setCurrentStep(1);
+    setIsHistoryOpen(false);
+
+    showToast(`Quotation ${quote.quotationNumber} loaded for editing! Adjust details or snips and compile.`);
+  };
+
+  // Admin delete quote
+  const handleDeleteQuote = async (quoteId) => {
+    try {
+      const res = await axios.delete(`${API_BASE}/quotations/${quoteId}`, {
+        params: { role: activeUser?.role }
+      });
+      if (res.data && res.data.success) {
+        showToast('Quotation permanently removed from vault.');
+        fetchQuotations(activeUser);
+      }
+    } catch (err) {
+      console.error('Delete quotation error:', err);
+      setErrorMessage('Failed to delete quotation: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleGenerate = async (engineType = 'node') => {
@@ -226,30 +335,47 @@ export default function App() {
       formData.append('repInfo', JSON.stringify(repInfo));
       formData.append('selectedVariantIds', JSON.stringify(selectedVariantIds));
       formData.append('engineType', engineType);
+      if (activeUser) {
+        formData.append('userId', activeUser.id);
+        formData.append('userRole', activeUser.role);
+      }
 
-      // Append snip images (supports multiple snips per variant)
+      // Append snip images or preserve existing preview URLs on re-edit
+      const existingSnips = {};
       Object.entries(snipFiles).forEach(([variantId, snipsOrFile]) => {
         if (Array.isArray(snipsOrFile)) {
           snipsOrFile.forEach((item, index) => {
             const file = item?.file || (item instanceof File ? item : null);
             if (file) {
               formData.append(`snip_${variantId}_${index}`, file);
+            } else if (item?.previewUrl) {
+              if (!existingSnips[variantId]) existingSnips[variantId] = [];
+              existingSnips[variantId].push(item.previewUrl);
             }
           });
         } else if (snipsOrFile) {
           const file = snipsOrFile?.file || (snipsOrFile instanceof File ? snipsOrFile : null);
           if (file) {
             formData.append(`snip_${variantId}_0`, file);
+          } else if (snipsOrFile?.previewUrl) {
+            if (!existingSnips[variantId]) existingSnips[variantId] = [];
+            existingSnips[variantId].push(snipsOrFile.previewUrl);
           }
         }
       });
+      if (Object.keys(existingSnips).length > 0) {
+        formData.append('existingSnips', JSON.stringify(existingSnips));
+      }
 
       // Append unit pages metadata & unit snip files
       formData.append('unitPagesMetadata', JSON.stringify(unitPages.map(p => ({
         id: p.id,
+        variantId: p.variantId || 'all',
         title: p.title,
         category: p.category,
-        notes: p.notes
+        notes: p.notes,
+        previewUrl: p.previewUrl,
+        filePath: p.filePath
       }))));
 
       unitPages.forEach(p => {
@@ -263,7 +389,9 @@ export default function App() {
         id: p.id,
         title: p.title,
         category: p.category,
-        notes: p.notes
+        notes: p.notes,
+        previewUrl: p.previewUrl,
+        filePath: p.filePath
       }))));
 
       accessoryPages.forEach(p => {
@@ -289,7 +417,7 @@ export default function App() {
         link.click();
         document.body.removeChild(link);
 
-        fetchQuotations();
+        fetchQuotations(activeUser);
 
         return { success: true };
       } else {
@@ -333,6 +461,7 @@ export default function App() {
         historyCount={quotations.length}
         activeUser={activeUser}
         onLogout={handleLogout}
+        onOpenUserManagement={() => setIsUserManagementOpen(true)}
       />
 
       {/* Main Container */}
@@ -345,6 +474,22 @@ export default function App() {
             if (!isGenerating) setCurrentStep(step);
           }}
         />
+
+        {/* Success Toast */}
+        {successToast && (
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-emerald-800 text-sm animate-fadeIn">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+              <span>{successToast}</span>
+            </div>
+            <button
+              onClick={() => setSuccessToast(null)}
+              className="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-900 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Global Error Banner */}
         {errorMessage && (
@@ -385,6 +530,8 @@ export default function App() {
 
         {currentStep === 3 && (
           <StepUnitSnips
+            variants={variants}
+            selectedVariantIds={selectedVariantIds}
             unitPages={unitPages}
             setUnitPages={setUnitPages}
             onBack={() => setCurrentStep(2)}
@@ -437,7 +584,16 @@ export default function App() {
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
         quotations={quotations}
+        activeUser={activeUser}
+        onReEdit={handleReEditQuote}
+        onDelete={handleDeleteQuote}
         onPreviewPdf={(url, title) => setPdfPreview({ isOpen: true, url, title })}
+      />
+
+      {/* Admin User Management Modal */}
+      <UserManagementModal
+        isOpen={isUserManagementOpen}
+        onClose={() => setIsUserManagementOpen(false)}
       />
 
       {/* Live PDF Viewer Modal */}

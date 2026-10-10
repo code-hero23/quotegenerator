@@ -35,12 +35,61 @@ const upload = multer({
 
 const pdfEngine = new PdfEngine();
 
-// GET /api/quotations - List quotation history
+// GET /api/quotations - List quotation history (scoped by role & user)
 router.get('/', async (req, res) => {
   try {
-    const quotations = await dbService.getQuotations();
+    const { userId, role } = req.query;
+    const quotations = await dbService.getQuotations({ userId, role });
     res.json({ success: true, count: quotations.length, data: quotations });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /api/quotations/:id - Delete quotation & physical files (Admin only)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.query;
+
+    if (role && role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Only administrators have permission to delete quotations.' });
+    }
+
+    const allQuotes = await dbService.getQuotations({ role: 'admin' });
+    const target = allQuotes.find(q => q.id === id);
+
+    if (!target) {
+      return res.status(404).json({ success: false, error: 'Quotation record not found.' });
+    }
+
+    // Safely delete associated files from disk
+    if (target.filePath && fs.existsSync(target.filePath)) {
+      try {
+        fs.unlinkSync(target.filePath);
+        console.log(`🗑️ Deleted PPTX file: ${target.filePath}`);
+      } catch (e) {
+        console.warn(`Could not remove PPTX file: ${e.message}`);
+      }
+    }
+
+    if (target.pdfPath && fs.existsSync(target.pdfPath)) {
+      try {
+        fs.unlinkSync(target.pdfPath);
+        console.log(`🗑️ Deleted PDF file: ${target.pdfPath}`);
+      } catch (e) {
+        console.warn(`Could not remove PDF file: ${e.message}`);
+      }
+    }
+
+    const removed = await dbService.deleteQuotation(id);
+    res.json({
+      success: true,
+      message: `Quotation ${target.quotationNumber || id} deleted successfully.`,
+      data: removed
+    });
+  } catch (error) {
+    console.error('Error deleting quotation:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -259,6 +308,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
           const meta = unitPagesMetadata.find(m => String(m.id) === String(unitId)) || {};
           unitSnips.push({
             id: unitId,
+            variantId: meta.variantId || 'all',
             title: meta.title || 'Unit Breakdown',
             category: meta.category || 'Unit Specification',
             notes: meta.notes || '',
@@ -285,7 +335,6 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
         const match = file.fieldname.match(/^snip_(.+)$/);
         if (match) {
           const rawId = match[1];
-          // Match selected variant ID (handling possible _<index> suffix e.g. snip_var_1_0)
           let matchedVid = selectedVariantIds.find(vid => rawId === vid || rawId.startsWith(`${vid}_`));
           const targetVid = matchedVid || rawId.replace(/_\d+$/, '');
 
@@ -304,6 +353,75 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
             }
           }
         }
+      }
+    }
+
+    // Support preserving existing files when re-editing quotes
+    if (unitPagesMetadata.length > 0) {
+      unitPagesMetadata.forEach(meta => {
+        if (!unitSnips.some(u => String(u.id) === String(meta.id))) {
+          let existingPath = meta.filePath;
+          if (!existingPath && meta.previewUrl && meta.previewUrl.includes('/uploads/snips/')) {
+            const basename = path.basename(meta.previewUrl);
+            const candidate = path.resolve(snipsDir, basename);
+            if (fs.existsSync(candidate)) existingPath = candidate;
+          }
+          if (existingPath && fs.existsSync(existingPath)) {
+            unitSnips.push({
+              id: meta.id,
+              variantId: meta.variantId || 'all',
+              title: meta.title || 'Unit Breakdown',
+              category: meta.category || 'Unit Specification',
+              notes: meta.notes || '',
+              filePath: existingPath
+            });
+          }
+        }
+      });
+    }
+
+    if (accessoryPagesMetadata.length > 0) {
+      accessoryPagesMetadata.forEach(meta => {
+        if (!accessorySnips.some(a => String(a.id) === String(meta.id))) {
+          let existingPath = meta.filePath;
+          if (!existingPath && meta.previewUrl && meta.previewUrl.includes('/uploads/snips/')) {
+            const basename = path.basename(meta.previewUrl);
+            const candidate = path.resolve(snipsDir, basename);
+            if (fs.existsSync(candidate)) existingPath = candidate;
+          }
+          if (existingPath && fs.existsSync(existingPath)) {
+            accessorySnips.push({
+              id: meta.id,
+              title: meta.title || 'Accessories & Hardware',
+              category: meta.category || 'Hardware Specifications',
+              notes: meta.notes || '',
+              filePath: existingPath
+            });
+          }
+        }
+      });
+    }
+
+    if (body.existingSnips) {
+      try {
+        const existingSnips = typeof body.existingSnips === 'string' ? JSON.parse(body.existingSnips) : body.existingSnips;
+        Object.entries(existingSnips).forEach(([vid, list]) => {
+          if (!snips[vid] || snips[vid].length === 0) {
+            const files = Array.isArray(list) ? list : [list];
+            files.forEach(item => {
+              const previewUrl = typeof item === 'string' ? item : (item.previewUrl || item.filePath);
+              if (previewUrl) {
+                const candidate = path.resolve(snipsDir, path.basename(previewUrl));
+                if (fs.existsSync(candidate)) {
+                  if (!snips[vid]) snips[vid] = [];
+                  snips[vid].push(candidate);
+                }
+              }
+            });
+          }
+        });
+      } catch (e) {
+        console.warn('Could not parse existingSnips:', e.message);
       }
     }
 
@@ -380,11 +498,40 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     const savedQuote = await dbService.createQuotation({
       quotationNumber: quoteNo,
       clientId: savedClient.id,
+      userId: body.userId || null,
+      userRole: body.userRole || 'architect',
       architect: architectName,
       repInfo,
       clientInfo,
       date: new Date(),
       selectedVariants: selectedVariantDetails,
+      selectedVariantIds: selectedVariantIds,
+      unitPagesMetadata: unitSnips.map(u => ({
+        id: u.id,
+        variantId: u.variantId || 'all',
+        title: u.title,
+        category: u.category,
+        notes: u.notes,
+        previewUrl: `/uploads/snips/${path.basename(u.filePath)}`,
+        filePath: u.filePath
+      })),
+      accessoryPagesMetadata: accessorySnips.map(a => ({
+        id: a.id,
+        title: a.title,
+        category: a.category,
+        notes: a.notes,
+        previewUrl: `/uploads/snips/${path.basename(a.filePath)}`,
+        filePath: a.filePath
+      })),
+      snipsMetadata: Object.fromEntries(
+        Object.entries(snips).map(([vid, files]) => [
+          vid,
+          (Array.isArray(files) ? files : [files]).map(f => ({
+            filePath: f,
+            previewUrl: `/uploads/snips/${path.basename(f)}`
+          }))
+        ])
+      ),
       filePath: pptxOutputPath,
       fileSize: pptxResult.fileSize,
       downloadUrl: pptxDownloadUrl,

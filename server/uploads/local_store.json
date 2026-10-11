@@ -113,16 +113,6 @@
       "title": "System Administrator"
     },
     {
-      "id": "user-sales-rep-1",
-      "name": "Mr. Abishek",
-      "contactNumber": "93611 84787",
-      "email": "designs.cookscape@gmail.com",
-      "role": "architect",
-      "username": "abishek",
-      "password": "arch123",
-      "title": "Feasibility Architect"
-    },
-    {
       "id": "user-arch-aravindan",
       "username": "aravindan",
       "password": "arch123",

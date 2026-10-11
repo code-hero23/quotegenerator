@@ -158,35 +158,9 @@ function loadLocalStore() {
             updated = true;
           }
 
-          // Ensure abishek user exists
-          const hasAbishek = parsed.users.some(u => u.username === 'abishek' || (u.name && u.name.toLowerCase().includes('abishek')));
-          if (!hasAbishek) {
-            parsed.users.push(defaultUsers[1]);
-            updated = true;
-          }
-
-          // Ensure aravindan user exists
-          const hasAravindan = parsed.users.some(u => u.username === 'aravindan' || (u.name && u.name.toLowerCase().includes('aravindan')));
-          if (!hasAravindan) {
-            parsed.users.push(defaultUsers[2]);
-            updated = true;
-          }
-
           // Ensure every user has username, password, role
           parsed.users.forEach((u, i) => {
-            if (u.name && u.name.toLowerCase().includes('abishek')) {
-              u.username = 'abishek';
-              u.role = 'architect';
-              u.title = 'Feasibility Architect';
-              u.password = 'arch123';
-              updated = true;
-            } else if (u.name && u.name.toLowerCase().includes('aravindan')) {
-              u.username = 'aravindan';
-              u.role = 'architect';
-              u.title = 'Feasibility Architect';
-              u.password = 'arch123';
-              updated = true;
-            } else if (!u.username) {
+            if (!u.username) {
               u.username = u.name ? u.name.toLowerCase().replace(/[^a-z0-9]/g, '') : `user${i}`;
               updated = true;
             }
@@ -298,14 +272,15 @@ const dbService = {
     // 2. Abishek login: allow password 'abishek', 'arch123', 'admin', 'admin123'
     if (cleanUser === 'abishek' || cleanUser === 'mrabishek') {
       const target = users.find(u => u.username === 'abishek' || u.username === 'mrabishek' || (u.name && u.name.toLowerCase().includes('abishek')));
-      const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(target?.password)];
+      if (!target) return null;
+      const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(target.password)];
       if (validPass.includes(cleanPass)) {
         return {
-          id: target ? target.id : 'user-sales-rep-1',
-          username: 'abishek',
-          name: target?.name || 'Mr. Abishek',
-          contactNumber: target?.contactNumber || '93611 84787',
-          email: target?.email || 'designs.cookscape@gmail.com',
+          id: target.id,
+          username: target.username || 'abishek',
+          name: target.name || 'Mr. Abishek',
+          contactNumber: target.contactNumber || '93611 84787',
+          email: target.email || 'designs.cookscape@gmail.com',
           role: 'architect',
           title: 'Feasibility Architect'
         };
@@ -315,14 +290,15 @@ const dbService = {
     // 3. Aravindan login: allow password 'aravind', 'aravindan', 'arch123', 'admin', 'admin123'
     if (cleanUser === 'aravindan' || cleanUser === 'aravind') {
       const target = users.find(u => u.username === 'aravindan' || u.username === 'aravind' || (u.name && u.name.toLowerCase().includes('aravindan')));
-      const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(target?.password)];
+      if (!target) return null;
+      const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(target.password)];
       if (validPass.includes(cleanPass)) {
         return {
-          id: target ? target.id : 'user-arch-aravindan',
-          username: 'aravindan',
-          name: target?.name || 'Aravindan',
-          contactNumber: target?.contactNumber || '7418414780',
-          email: target?.email || 'aravind@cookscape.in',
+          id: target.id,
+          username: target.username || 'aravindan',
+          name: target.name || 'Aravindan',
+          contactNumber: target.contactNumber || '7418414780',
+          email: target.email || 'aravind@cookscape.in',
           role: 'architect',
           title: 'Feasibility Architect'
         };
@@ -403,7 +379,7 @@ const dbService = {
     const store = loadLocalStore();
     if (!store.users) return false;
 
-    const targetIndex = store.users.findIndex(u => u.id === userId);
+    const targetIndex = store.users.findIndex(u => u.id === userId || u.username === userId);
     if (targetIndex === -1) return false;
 
     // Do not allow deleting the main admin account

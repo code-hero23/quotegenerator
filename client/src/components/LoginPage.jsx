@@ -57,7 +57,7 @@ export default function LoginPage({ onLogin }) {
 
         <div>
           <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight font-['Outfit']">
-            COOKSCAPE STUDIO
+            COOKSCAPE QUOTE GENERATOR
           </h2>
           <p className="text-sm text-amber-700 font-semibold mt-0.5">
             Quotation & Feasibility Portal

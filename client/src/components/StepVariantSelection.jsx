@@ -105,11 +105,8 @@ export default function StepVariantSelection({
                   </div>
                 </div>
 
-                {/* Specifications & Slide Mapping Badge */}
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
-                  <span className="text-xs px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-900 font-bold">
-                    {variant.specs?.warranty || 'Architectural Specification'}
-                  </span>
+                {/* Slide Mapping Badge */}
+                <div className="flex items-center justify-end mb-4 pb-3 border-b border-slate-200">
                   <span className="text-xs px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-mono font-bold">
                     Slides: {slideIndices.join(', ')}
                   </span>

@@ -1,12 +1,15 @@
 import React from 'react';
-import { FileText, History, User, LogOut } from 'lucide-react';
+import { FileText, History, User, LogOut, Download, WifiOff } from 'lucide-react';
 
 export default function Header({ 
   onOpenHistory, 
   historyCount, 
   activeUser, 
   onLogout,
-  onOpenUserManagement
+  onOpenUserManagement,
+  isInstallable = false,
+  isOnline = true,
+  onInstall
 }) {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs">
@@ -23,12 +26,9 @@ export default function Header({
                 COOKSCAPE
               </h1>
               <span className="text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 shrink-0">
-                STUDIO
+                QUOTE GENERATOR
               </span>
             </div>
-            <p className="hidden md:block text-xs text-slate-500 font-medium truncate">
-              Master Template Subtraction Engine • PPTX & PDF Dual Export
-            </p>
           </div>
         </div>
 
@@ -68,6 +68,29 @@ export default function Header({
               </span>
             )}
           </button>
+
+          {/* PWA Install Button (shown when installable) */}
+          {isInstallable && (
+            <button
+              onClick={onInstall}
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border border-amber-400 text-xs font-bold shadow-xs hover:shadow transition-all shrink-0 cursor-pointer animate-pulse"
+              title="Install Cookscape App to Desktop or Home Screen"
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Install App</span>
+            </button>
+          )}
+
+          {/* Offline indicator */}
+          {!isOnline && (
+            <div
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-rose-50 border border-rose-300 text-rose-800 text-xs font-semibold shrink-0"
+              title="Offline Mode - Cached PWA active"
+            >
+              <WifiOff className="w-3.5 h-3.5 text-rose-600" />
+              <span className="hidden sm:inline">Offline</span>
+            </div>
+          )}
 
           {/* User Badge & Logout */}
           {activeUser && (

@@ -13,6 +13,7 @@ import PdfViewerModal from './components/PdfViewerModal';
 import LoginPage from './components/LoginPage';
 import UserManagementModal from './components/UserManagementModal';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { usePwa } from './hooks/usePwa';
 
 const API_BASE = '/api';
 
@@ -95,6 +96,9 @@ const fallbackVariants = [
 ];
 
 export default function App() {
+  // PWA Support (Installation & Offline Status)
+  const { isInstallable, isInstalled, isOnline, promptInstall } = usePwa();
+
   // Authentication State
   const [activeUser, setActiveUser] = useState(() => {
     try {
@@ -484,6 +488,9 @@ export default function App() {
         activeUser={activeUser}
         onLogout={handleLogout}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
+        isInstallable={isInstallable}
+        isOnline={isOnline}
+        onInstall={promptInstall}
       />
 
       {/* Main Container */}

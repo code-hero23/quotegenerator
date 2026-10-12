@@ -16,20 +16,13 @@ export default function Header({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
         
         {/* Brand & Logo */}
-        <div className="flex items-center space-x-2 sm:space-x-3.5 min-w-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <div className="h-9 sm:h-12 w-auto flex items-center justify-center p-1 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden shrink-0">
             <img src="/logo.jpeg" alt="Cookscape Logo" className="h-7 sm:h-10 w-auto object-contain rounded-lg" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center space-x-1.5 sm:space-x-2">
-              <h1 className="text-base sm:text-xl font-bold tracking-tight text-slate-900 font-['Outfit'] truncate">
-                COOKSCAPE
-              </h1>
-              <span className="text-[9px] sm:text-[11px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 shrink-0">
-                QUOTE GENERATOR
-              </span>
-            </div>
-          </div>
+          <span className="text-[10px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 shrink-0">
+            QUOTE GENERATOR
+          </span>
         </div>
 
         {/* User Profile & Actions */}

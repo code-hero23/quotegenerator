@@ -16,11 +16,32 @@ echo "🔌 Target Backend Port: 5002"
 echo "🕒 Timestamp: $(date)"
 echo "=========================================================="
 
-# 1. Pull latest code from GitHub
+# 1. Safeguard existing database & pull latest code from GitHub
 echo ""
-echo "📥 [1/6] Pulling latest updates from GitHub (main)..."
-git reset --hard HEAD || true
+echo "📥 [1/6] Safeguarding database and pulling latest updates from GitHub (main)..."
+
+LOCAL_STORE="$APP_DIR/server/uploads/local_store.json"
+BACKUP_DIR="$APP_DIR/server/uploads/backups"
+PRESERVE_FILE="/tmp/quotegenerator_local_store_preserve.json"
+
+if [ -f "$LOCAL_STORE" ]; then
+    mkdir -p "$BACKUP_DIR"
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    echo "💾 Creating automatic safety backup: $BACKUP_DIR/local_store_backup_${TIMESTAMP}.json"
+    cp -f "$LOCAL_STORE" "$BACKUP_DIR/local_store_backup_${TIMESTAMP}.json"
+    cp -f "$LOCAL_STORE" "$PRESERVE_FILE"
+fi
+
+# Fetch and merge updates safely
 git pull origin main
+
+# Restore database if git pull touched or reset it
+if [ -f "$PRESERVE_FILE" ]; then
+    echo "🛡️ Restoring preserved database to ensure zero data loss..."
+    mkdir -p "$APP_DIR/server/uploads"
+    cp -f "$PRESERVE_FILE" "$LOCAL_STORE"
+    rm -f "$PRESERVE_FILE"
+fi
 
 # Ensure Nginx allows large multi-image quotation payloads
 if [ -d /etc/nginx ]; then

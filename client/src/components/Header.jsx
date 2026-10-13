@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, History, User, LogOut, Download, WifiOff } from 'lucide-react';
+import { FileText, History, User, LogOut, Download, WifiOff, RefreshCw, Check, AlertCircle } from 'lucide-react';
 
 export default function Header({ 
   onOpenHistory, 
@@ -9,7 +9,10 @@ export default function Header({
   onOpenUserManagement,
   isInstallable = false,
   isOnline = true,
-  onInstall
+  onInstall,
+  autosaveStatus,
+  lastSavedAt,
+  onSaveNow
 }) {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs">
@@ -34,6 +37,53 @@ export default function Header({
             <span className="text-slate-700 font-medium">Master-Template.pptx</span>
             <span className="text-emerald-600 font-bold">• 29 Slides</span>
           </div>
+
+          {/* Autosave Status Badge */}
+          {autosaveStatus && (
+            <button
+              type="button"
+              onClick={onSaveNow}
+              title={lastSavedAt ? `Autosaved at ${lastSavedAt.toLocaleTimeString()} (Click to save now)` : 'Click to save draft now'}
+              className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                autosaveStatus === 'saving'
+                  ? 'bg-amber-50 border-amber-300 text-amber-800'
+                  : autosaveStatus === 'saved'
+                  ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  : autosaveStatus === 'unsaved'
+                  ? 'bg-slate-50 hover:bg-slate-100 border-slate-300 text-slate-600'
+                  : 'bg-rose-50 border-rose-300 text-rose-800'
+              }`}
+            >
+              {autosaveStatus === 'saving' && (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                  <span>Saving...</span>
+                </>
+              )}
+              {autosaveStatus === 'saved' && (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>
+                    {lastSavedAt
+                      ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                      : 'Draft Saved'}
+                  </span>
+                </>
+              )}
+              {autosaveStatus === 'unsaved' && (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span>Unsaved edits</span>
+                </>
+              )}
+              {autosaveStatus === 'error' && (
+                <>
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Autosave failed</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Admin Architects Management Button */}
           {activeUser?.role === 'admin' && (

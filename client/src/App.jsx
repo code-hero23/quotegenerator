@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Header from './components/Header';
 import StepIndicator from './components/StepIndicator';
@@ -12,8 +12,9 @@ import QuotationHistoryModal from './components/QuotationHistoryModal';
 import PdfViewerModal from './components/PdfViewerModal';
 import LoginPage from './components/LoginPage';
 import UserManagementModal from './components/UserManagementModal';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { usePwa } from './hooks/usePwa';
+import { useAutosave } from './hooks/useAutosave';
 
 const API_BASE = '/api';
 
@@ -161,6 +162,87 @@ export default function App() {
 
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
+
+  // Draft recovery state
+  const [savedDraftPrompt, setSavedDraftPrompt] = useState(null);
+
+  // Check for existing draft on initial mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('cookscape_quote_draft');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.clientInfo?.name || (parsed.unitPages && parsed.unitPages.length > 0))) {
+          setSavedDraftPrompt(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse quote draft from storage:', e);
+    }
+  }, []);
+
+  const handleRestoreDraft = () => {
+    if (!savedDraftPrompt) return;
+    if (savedDraftPrompt.clientInfo) setClientInfo(savedDraftPrompt.clientInfo);
+    if (savedDraftPrompt.repInfo) setRepInfo(savedDraftPrompt.repInfo);
+    if (savedDraftPrompt.selectedVariantIds) setSelectedVariantIds(savedDraftPrompt.selectedVariantIds);
+    if (savedDraftPrompt.unitPages) setUnitPages(savedDraftPrompt.unitPages);
+    if (savedDraftPrompt.accessoryPages) setAccessoryPages(savedDraftPrompt.accessoryPages);
+    if (savedDraftPrompt.currentStep) setCurrentStep(savedDraftPrompt.currentStep);
+    markAsSaved(savedDraftPrompt);
+    setSavedDraftPrompt(null);
+    showToast('Autosaved draft restored successfully!');
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('cookscape_quote_draft');
+    setSavedDraftPrompt(null);
+    showToast('Draft discarded.');
+  };
+
+  // Prepare serializable draft payload for autosave
+  const currentDraftPayload = useMemo(() => ({
+    currentStep,
+    clientInfo,
+    repInfo,
+    selectedVariantIds,
+    unitPages: unitPages.map(p => ({
+      id: p.id,
+      variantId: p.variantId || 'all',
+      title: p.title,
+      category: p.category,
+      notes: p.notes,
+      previewUrl: p.filePath ? p.previewUrl : null,
+      filePath: p.filePath || null
+    })),
+    accessoryPages: accessoryPages.map(p => ({
+      id: p.id,
+      title: p.title,
+      category: p.category,
+      notes: p.notes,
+      previewUrl: p.filePath ? p.previewUrl : null,
+      filePath: p.filePath || null
+    }))
+  }), [currentStep, clientInfo, repInfo, selectedVariantIds, unitPages, accessoryPages]);
+
+  // Periodic autosave every 5 seconds (5000ms)
+  const { saveStatus, lastSavedAt, saveNow, markAsSaved } = useAutosave({
+    data: currentDraftPayload,
+    intervalMs: 5000,
+    enabled: !!activeUser && !isGenerating,
+    onSave: async (draftData) => {
+      try {
+        const payload = {
+          ...draftData,
+          updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem('cookscape_quote_draft', JSON.stringify(payload));
+      } catch (err) {
+        console.error('Failed to autosave draft:', err);
+        throw err;
+      }
+    }
+  });
 
   // When active user changes, sync with repInfo & fetch scoped quotations
   useEffect(() => {
@@ -444,6 +526,7 @@ export default function App() {
         document.body.removeChild(link);
 
         fetchQuotations(activeUser);
+        localStorage.removeItem('cookscape_quote_draft');
 
         return { success: true };
       } else {
@@ -471,6 +554,7 @@ export default function App() {
   const handleReset = () => {
     setGenerationResult(null);
     setCurrentStep(1);
+    localStorage.removeItem('cookscape_quote_draft');
   };
 
   // If not logged in, render LoginPage
@@ -491,6 +575,9 @@ export default function App() {
         isInstallable={isInstallable}
         isOnline={isOnline}
         onInstall={promptInstall}
+        autosaveStatus={saveStatus}
+        lastSavedAt={lastSavedAt}
+        onSaveNow={saveNow}
       />
 
       {/* Main Container */}
@@ -503,6 +590,46 @@ export default function App() {
             if (!isGenerating) setCurrentStep(step);
           }}
         />
+
+        {/* Draft Recovery Banner */}
+        {savedDraftPrompt && (
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 text-sm animate-fadeIn shadow-xs">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-amber-100 rounded-lg shrink-0">
+                <FileText className="w-5 h-5 text-amber-700" />
+              </div>
+              <div>
+                <p className="font-bold text-amber-950">
+                  Autosaved draft available
+                  {savedDraftPrompt.updatedAt && (
+                    <span className="font-normal text-amber-800 text-xs ml-2">
+                      ({new Date(savedDraftPrompt.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Would you like to restore your work for &quot;{savedDraftPrompt.clientInfo?.name || 'Client Draft'}&quot;?
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleRestoreDraft}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs cursor-pointer shadow-xs transition-colors"
+              >
+                Restore Draft
+              </button>
+              <button
+                type="button"
+                onClick={handleDiscardDraft}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-lg bg-white hover:bg-amber-100 border border-amber-300 text-amber-900 font-semibold text-xs cursor-pointer transition-colors"
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Success Toast */}
         {successToast && (

@@ -1,29 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
- * Custom hook that runs autosave every `intervalMs` milliseconds (default: 5000ms / 5 seconds).
- * - Only triggers save when data has actually changed (dirty check).
- * - Avoids concurrent overlapping async saves.
- * - Tracks status: 'idle' | 'unsaved' | 'saving' | 'saved' | 'error'.
- * - Provides `saveNow` to force immediate save.
+ * Bulletproof Autosave Hook:
+ * - Runs every intervalMs (default 5000ms / 5 seconds) when data is dirty.
+ * - Flushes pending changes immediately on window `beforeunload`, `pagehide`, and `visibilitychange`.
+ * - Avoids concurrent overlapping saves.
+ * - Tracks status: 'saved' | 'saving' | 'unsaved' | 'error'.
  *
  * @param {Object} options
  * @param {any} options.data - The data object to watch and persist.
- * @param {Function} options.onSave - Async or sync callback (data) => Promise<void> | void.
+ * @param {Function} options.onSave - Save callback (data) => Promise<void> | void.
  * @param {number} [options.intervalMs=5000] - Save frequency in ms (default: 5000).
  * @param {boolean} [options.enabled=true] - Toggle autosave on/off.
  */
 export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true }) {
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'unsaved' | 'error'
-  const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [lastSavedAt, setLastSavedAt] = useState(() => new Date());
 
-  // References to keep closures fresh without resetting the timer
   const latestDataRef = useRef(data);
   const onSaveRef = useRef(onSave);
   const lastSavedDataRef = useRef(JSON.stringify(data));
   const isSavingRef = useRef(false);
 
-  // Keep callback and data refs up to date
+  // Keep references updated & detect dirty changes
   useEffect(() => {
     latestDataRef.current = data;
     onSaveRef.current = onSave;
@@ -32,15 +31,15 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
 
     try {
       const currentSerialized = JSON.stringify(data);
-      if (currentSerialized !== lastSavedDataRef.current && saveStatus !== 'saving') {
+      if (currentSerialized !== lastSavedDataRef.current && !isSavingRef.current) {
         setSaveStatus('unsaved');
       }
     } catch (e) {
-      // Ignore circular or serialization errors
+      // Ignore serialization issues
     }
-  }, [data, onSave, enabled, saveStatus]);
+  }, [data, onSave, enabled]);
 
-  // Execute the save action
+  // Execute periodic save
   const executeSave = useCallback(async () => {
     if (isSavingRef.current || !enabled) return;
 
@@ -53,7 +52,7 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
       return;
     }
 
-    // Skip if data is identical to last saved
+    // Skip if unchanged
     if (serialized === lastSavedDataRef.current) {
       return;
     }
@@ -75,7 +74,24 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
     }
   }, [enabled]);
 
-  // Periodic interval every intervalMs (5 seconds)
+  // Synchronous flush for tab closing or switching away
+  const flushImmediately = useCallback(() => {
+    if (!enabled) return;
+    const dataToSave = latestDataRef.current;
+    try {
+      const serialized = JSON.stringify(dataToSave);
+      if (serialized !== lastSavedDataRef.current) {
+        onSaveRef.current(dataToSave);
+        lastSavedDataRef.current = serialized;
+        setSaveStatus('saved');
+        setLastSavedAt(new Date());
+      }
+    } catch (err) {
+      console.error('Flush autosave failed on page unload:', err);
+    }
+  }, [enabled]);
+
+  // Periodic timer every intervalMs (5 seconds)
   useEffect(() => {
     if (!enabled) return;
 
@@ -86,7 +102,31 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
     return () => clearInterval(timer);
   }, [intervalMs, enabled, executeSave]);
 
-  // Helper to mark current state as saved (e.g. after initial restore)
+  // Critical: Flush immediately when tab closes, user navigates away, or window is hidden
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleBeforeUnload = () => {
+      flushImmediately();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushImmediately();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, flushImmediately]);
+
   const markAsSaved = useCallback((customData) => {
     const target = customData !== undefined ? customData : latestDataRef.current;
     try {
@@ -101,6 +141,7 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
     saveStatus,
     lastSavedAt,
     saveNow: executeSave,
+    flushImmediately,
     markAsSaved
   };
 }

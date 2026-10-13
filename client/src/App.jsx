@@ -15,6 +15,7 @@ import UserManagementModal from './components/UserManagementModal';
 import { AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import { usePwa } from './hooks/usePwa';
 import { useAutosave } from './hooks/useAutosave';
+import { getSyncDraft, saveSyncDraft, saveIndexedDBDraft, loadIndexedDBDraft, clearAllDrafts } from './utils/draftStorage';
 
 const API_BASE = '/api';
 
@@ -136,27 +137,12 @@ const DEFAULT_ACCESSORY_PAGES = [
   }
 ];
 
-const readSavedDraft = () => {
-  try {
-    const raw = localStorage.getItem('cookscape_quote_draft');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn('Failed to read cookscape_quote_draft:', err);
-  }
-  return null;
-};
-
 export default function App() {
   // PWA Support (Installation & Offline Status)
   const { isInstallable, isInstalled, isOnline, promptInstall } = usePwa();
 
   // 1. Read existing autosaved draft synchronously on load
-  const initialDraft = useMemo(() => readSavedDraft(), []);
+  const initialDraft = useMemo(() => getSyncDraft(), []);
   const [draftBannerDismissed, setDraftBannerDismissed] = useState(false);
 
   // Authentication State
@@ -180,7 +166,7 @@ export default function App() {
   const [clientInfo, setClientInfo] = useState(() => initialDraft?.clientInfo || DEFAULT_CLIENT_INFO);
   const [repInfo, setRepInfo] = useState(() => initialDraft?.repInfo || DEFAULT_REP_INFO);
   const [selectedVariantIds, setSelectedVariantIds] = useState(() => initialDraft?.selectedVariantIds || DEFAULT_VARIANT_IDS);
-  const [snipFiles, setSnipFiles] = useState({});
+  const [snipFiles, setSnipFiles] = useState(() => initialDraft?.snipFiles || {});
   const [unitPages, setUnitPages] = useState(() => (initialDraft?.unitPages && initialDraft.unitPages.length > 0) ? initialDraft.unitPages : DEFAULT_UNIT_PAGES);
   const [accessoryPages, setAccessoryPages] = useState(() => (initialDraft?.accessoryPages && initialDraft.accessoryPages.length > 0) ? initialDraft.accessoryPages : DEFAULT_ACCESSORY_PAGES);
 
@@ -191,8 +177,50 @@ export default function App() {
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
 
+  // Re-hydrate any images or file attachments stored in IndexedDB on startup
+  useEffect(() => {
+    let isCancelled = false;
+    loadIndexedDBDraft().then(fullDraft => {
+      if (isCancelled || !fullDraft) return;
+
+      if (Array.isArray(fullDraft.unitPages) && fullDraft.unitPages.some(p => p.file || p.previewUrl)) {
+        setUnitPages(prev => fullDraft.unitPages.map((saved, idx) => {
+          const existing = prev[idx] || {};
+          return {
+            ...existing,
+            ...saved,
+            file: saved.file || existing.file || null,
+            previewUrl: saved.previewUrl || existing.previewUrl || null
+          };
+        }));
+      }
+
+      if (Array.isArray(fullDraft.accessoryPages) && fullDraft.accessoryPages.some(p => p.file || p.previewUrl)) {
+        setAccessoryPages(prev => fullDraft.accessoryPages.map((saved, idx) => {
+          const existing = prev[idx] || {};
+          return {
+            ...existing,
+            ...saved,
+            file: saved.file || existing.file || null,
+            previewUrl: saved.previewUrl || existing.previewUrl || null
+          };
+        }));
+      }
+
+      if (fullDraft.snipFiles && typeof fullDraft.snipFiles === 'object' && Object.keys(fullDraft.snipFiles).length > 0) {
+        setSnipFiles(fullDraft.snipFiles);
+      }
+    }).catch(err => {
+      console.warn('Draft rehydration from IndexedDB skipped:', err);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const handleStartFresh = () => {
-    localStorage.removeItem('cookscape_quote_draft');
+    clearAllDrafts();
     setClientInfo(DEFAULT_CLIENT_INFO);
     setRepInfo({
       name: activeUser?.name || DEFAULT_REP_INFO.name,
@@ -211,7 +239,8 @@ export default function App() {
       repInfo: DEFAULT_REP_INFO,
       selectedVariantIds: DEFAULT_VARIANT_IDS,
       unitPages: DEFAULT_UNIT_PAGES,
-      accessoryPages: DEFAULT_ACCESSORY_PAGES
+      accessoryPages: DEFAULT_ACCESSORY_PAGES,
+      snipFiles: {}
     });
     showToast('Reset form to a fresh quotation.');
   };
@@ -222,51 +251,20 @@ export default function App() {
     clientInfo,
     repInfo,
     selectedVariantIds,
-    unitPages: unitPages.map(p => ({
-      id: p.id,
-      variantId: p.variantId || 'all',
-      title: p.title,
-      category: p.category,
-      notes: p.notes,
-      previewUrl: p.filePath ? p.previewUrl : null,
-      filePath: p.filePath || null
-    })),
-    accessoryPages: accessoryPages.map(p => ({
-      id: p.id,
-      title: p.title,
-      category: p.category,
-      notes: p.notes,
-      previewUrl: p.filePath ? p.previewUrl : null,
-      filePath: p.filePath || null
-    }))
-  }), [currentStep, clientInfo, repInfo, selectedVariantIds, unitPages, accessoryPages]);
+    unitPages,
+    accessoryPages,
+    snipFiles
+  }), [currentStep, clientInfo, repInfo, selectedVariantIds, unitPages, accessoryPages, snipFiles]);
 
-  // Periodic autosave every 5 seconds (5000ms) + immediate flush on close
+  // Comprehensive autosave: triggers on edit (300ms debounce), tab switch, window blur, tab close, or 5s timer
   const { saveStatus, lastSavedAt, saveNow, markAsSaved } = useAutosave({
     data: currentDraftPayload,
     intervalMs: 5000,
-    enabled: !!activeUser && !isGenerating,
+    debounceMs: 300,
+    enabled: !isGenerating,
     onSave: (draftData) => {
-      try {
-        const payload = {
-          ...draftData,
-          updatedAt: new Date().toISOString()
-        };
-        localStorage.setItem('cookscape_quote_draft', JSON.stringify(payload));
-      } catch (err) {
-        if (err.name === 'QuotaExceededError' || err.code === 22) {
-          console.warn('Quota exceeded in localStorage, saving lightweight text draft');
-          const lightweight = {
-            ...draftData,
-            unitPages: draftData.unitPages?.map(u => ({ ...u, previewUrl: null })),
-            accessoryPages: draftData.accessoryPages?.map(a => ({ ...a, previewUrl: null })),
-            updatedAt: new Date().toISOString()
-          };
-          localStorage.setItem('cookscape_quote_draft', JSON.stringify(lightweight));
-        } else {
-          console.error('Failed to autosave draft:', err);
-        }
-      }
+      saveSyncDraft(draftData);
+      saveIndexedDBDraft(draftData);
     }
   });
 
@@ -556,7 +554,7 @@ export default function App() {
         document.body.removeChild(link);
 
         fetchQuotations(activeUser);
-        localStorage.removeItem('cookscape_quote_draft');
+        clearAllDrafts();
 
         return { success: true };
       } else {
@@ -584,7 +582,7 @@ export default function App() {
   const handleReset = () => {
     setGenerationResult(null);
     setCurrentStep(1);
-    localStorage.removeItem('cookscape_quote_draft');
+    clearAllDrafts();
   };
 
   // If not logged in, render LoginPage

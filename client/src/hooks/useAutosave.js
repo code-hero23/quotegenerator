@@ -1,19 +1,26 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
- * Bulletproof Autosave Hook:
- * - Runs every intervalMs (default 5000ms / 5 seconds) when data is dirty.
- * - Flushes pending changes immediately on window `beforeunload`, `pagehide`, and `visibilitychange`.
- * - Avoids concurrent overlapping saves.
- * - Tracks status: 'saved' | 'saving' | 'unsaved' | 'error'.
+ * Universal Autosave Hook:
+ * 1. Saves on EVERY change (debounced at debounceMs, default 300ms).
+ * 2. Runs periodic safety timer (every intervalMs, default 5000ms).
+ * 3. Saves immediately when switching browser tabs (visibilitychange & blur).
+ * 4. Saves immediately when closing Chrome tab or refreshing (beforeunload & pagehide).
  *
  * @param {Object} options
  * @param {any} options.data - The data object to watch and persist.
  * @param {Function} options.onSave - Save callback (data) => Promise<void> | void.
- * @param {number} [options.intervalMs=5000] - Save frequency in ms (default: 5000).
+ * @param {number} [options.intervalMs=5000] - Periodic fallback interval (default: 5000ms).
+ * @param {number} [options.debounceMs=300] - Debounce delay after any edit (default: 300ms).
  * @param {boolean} [options.enabled=true] - Toggle autosave on/off.
  */
-export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true }) {
+export function useAutosave({
+  data,
+  onSave,
+  intervalMs = 5000,
+  debounceMs = 300,
+  enabled = true
+}) {
   const [saveStatus, setSaveStatus] = useState('saved'); // 'saved' | 'saving' | 'unsaved' | 'error'
   const [lastSavedAt, setLastSavedAt] = useState(() => new Date());
 
@@ -21,25 +28,32 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
   const onSaveRef = useRef(onSave);
   const lastSavedDataRef = useRef(JSON.stringify(data));
   const isSavingRef = useRef(false);
+  const debounceTimerRef = useRef(null);
 
-  // Keep references updated & detect dirty changes
-  useEffect(() => {
-    latestDataRef.current = data;
-    onSaveRef.current = onSave;
-
+  // Synchronous flush function: guaranteed to execute synchronously on unload/blur/visibility
+  const flushImmediately = useCallback(() => {
     if (!enabled) return;
 
-    try {
-      const currentSerialized = JSON.stringify(data);
-      if (currentSerialized !== lastSavedDataRef.current && !isSavingRef.current) {
-        setSaveStatus('unsaved');
-      }
-    } catch (e) {
-      // Ignore serialization issues
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
     }
-  }, [data, onSave, enabled]);
 
-  // Execute periodic save
+    const dataToSave = latestDataRef.current;
+    try {
+      const serialized = JSON.stringify(dataToSave);
+      if (serialized !== lastSavedDataRef.current) {
+        onSaveRef.current(dataToSave);
+        lastSavedDataRef.current = serialized;
+        setSaveStatus('saved');
+        setLastSavedAt(new Date());
+      }
+    } catch (err) {
+      console.error('Flush autosave failed on page unload/blur:', err);
+    }
+  }, [enabled]);
+
+  // Async save action with state tracking
   const executeSave = useCallback(async () => {
     if (isSavingRef.current || !enabled) return;
 
@@ -74,35 +88,50 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
     }
   }, [enabled]);
 
-  // Synchronous flush for tab closing or switching away
-  const flushImmediately = useCallback(() => {
-    if (!enabled) return;
-    const dataToSave = latestDataRef.current;
-    try {
-      const serialized = JSON.stringify(dataToSave);
-      if (serialized !== lastSavedDataRef.current) {
-        onSaveRef.current(dataToSave);
-        lastSavedDataRef.current = serialized;
-        setSaveStatus('saved');
-        setLastSavedAt(new Date());
-      }
-    } catch (err) {
-      console.error('Flush autosave failed on page unload:', err);
-    }
-  }, [enabled]);
+  // Trigger 1: Save on EVERY change with short debounce
+  useEffect(() => {
+    latestDataRef.current = data;
+    onSaveRef.current = onSave;
 
-  // Periodic timer every intervalMs (5 seconds)
+    if (!enabled) return;
+
+    try {
+      const currentSerialized = JSON.stringify(data);
+      if (currentSerialized !== lastSavedDataRef.current) {
+        setSaveStatus('unsaved');
+
+        // Reset debounce timer
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+          executeSave();
+        }, debounceMs);
+      }
+    } catch {
+      // Ignore serialization issues
+    }
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [data, onSave, enabled, debounceMs, executeSave]);
+
+  // Trigger 2: Periodic heartbeat interval (every 5 seconds)
   useEffect(() => {
     if (!enabled) return;
 
-    const timer = setInterval(() => {
+    const intervalTimer = setInterval(() => {
       executeSave();
     }, intervalMs);
 
-    return () => clearInterval(timer);
+    return () => clearInterval(intervalTimer);
   }, [intervalMs, enabled, executeSave]);
 
-  // Critical: Flush immediately when tab closes, user navigates away, or window is hidden
+  // Trigger 3 & 4: Save immediately on tab switch, window blur, tab close, or refresh
   useEffect(() => {
     if (!enabled) return;
 
@@ -116,14 +145,20 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
       }
     };
 
+    const handleWindowBlur = () => {
+      flushImmediately();
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, [enabled, flushImmediately]);
 
@@ -132,7 +167,7 @@ export function useAutosave({ data, onSave, intervalMs = 5000, enabled = true })
     try {
       lastSavedDataRef.current = JSON.stringify(target);
       setSaveStatus('saved');
-    } catch (e) {
+    } catch {
       // Ignore
     }
   }, []);

@@ -148,6 +148,16 @@ export default function LoginPage({ onLogin }) {
 
           </form>
 
+          {/* Admin Access Helper Note */}
+          <div className="pt-3 border-t border-slate-100 text-center">
+            <p className="text-xs text-slate-500">
+              Admin Access: <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">admin</span> / <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">admin123</span>
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Log in as Admin to create new Feasibility Architect accounts.
+            </p>
+          </div>
+
         </div>
       </div>
 

@@ -93,7 +93,7 @@ export default function Header({
               title="Manage Feasibility Architects & User Access"
             >
               <User className="w-4 h-4 text-amber-700 shrink-0" />
-              <span className="hidden sm:inline">👥 Architects</span>
+              <span className="font-bold">👥 Architects</span>
             </button>
           )}
 

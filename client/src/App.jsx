@@ -12,7 +12,7 @@ import QuotationHistoryModal from './components/QuotationHistoryModal';
 import PdfViewerModal from './components/PdfViewerModal';
 import LoginPage from './components/LoginPage';
 import UserManagementModal from './components/UserManagementModal';
-import { AlertCircle, CheckCircle2, FileText } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, LogOut } from 'lucide-react';
 import { usePwa } from './hooks/usePwa';
 import { useAutosave } from './hooks/useAutosave';
 import { getSyncDraft, saveSyncDraft, saveIndexedDBDraft, loadIndexedDBDraft, clearAllDrafts } from './utils/draftStorage';
@@ -174,9 +174,22 @@ export default function App() {
 
   const [repInfo, setRepInfo] = useState(() => {
     const draft = initialDraft?.repInfo;
-    if (draft && (draft.name === 'Mr. Abishek' || draft.name === 'Cookscape Representative')) {
-      return DEFAULT_REP_INFO;
+    const isSample = !draft?.name ||
+      draft.name === 'Karthik Ramanathan' ||
+      draft.name === 'Mr. Abishek' ||
+      draft.name === 'Cookscape Representative';
+
+    if (activeUser) {
+      if (draft && !isSample && draft.name === activeUser.name) {
+        return draft;
+      }
+      return {
+        name: activeUser.name || activeUser.username || '',
+        contact: activeUser.contactNumber || activeUser.contact || '',
+        email: activeUser.email || ''
+      };
     }
+    if (isSample) return DEFAULT_REP_INFO;
     return draft || DEFAULT_REP_INFO;
   });
 
@@ -190,6 +203,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState(null);
 
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
+  const [isLogoutPromptOpen, setIsLogoutPromptOpen] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
 
   // Re-hydrate any images or file attachments stored in IndexedDB on startup
@@ -288,14 +302,20 @@ export default function App() {
     if (activeUser) {
       localStorage.setItem('cookscape_active_user', JSON.stringify(activeUser));
       fetchQuotations(activeUser);
-      // Only set default repInfo if repInfo is not already customized by draft
+      // Synchronize repInfo with activeUser
       setRepInfo(prev => {
-        if (prev?.name && prev.name !== DEFAULT_REP_INFO.name) return prev;
-        return {
-          name: activeUser.name || activeUser.username || '',
-          contact: activeUser.contactNumber || activeUser.contact || '',
-          email: activeUser.email || ''
-        };
+        const isSampleOrEmpty = !prev?.name ||
+          prev.name === 'Karthik Ramanathan' ||
+          prev.name === 'Mr. Abishek' ||
+          prev.name === 'Cookscape Representative';
+        if (isSampleOrEmpty || prev.name !== activeUser.name) {
+          return {
+            name: activeUser.name || activeUser.username || '',
+            contact: activeUser.contactNumber || activeUser.contact || '',
+            email: activeUser.email || ''
+          };
+        }
+        return prev;
       });
     } else {
       localStorage.removeItem('cookscape_active_user');
@@ -349,11 +369,34 @@ export default function App() {
 
   const handleLogin = (user) => {
     setActiveUser(user);
+    if (user) {
+      // Immediately reflect logged-in user in Designer details
+      setRepInfo({
+        name: user.name || user.username || '',
+        contact: user.contactNumber || user.contact || '',
+        email: user.email || ''
+      });
+    }
     fetchQuotations(user);
   };
 
   const handleLogout = () => {
     setActiveUser(null);
+    setRepInfo(DEFAULT_REP_INFO);
+  };
+
+  const handleUserUpdated = (updatedUser) => {
+    if (activeUser && (activeUser.id === updatedUser.id || activeUser.username === updatedUser.username)) {
+      const merged = { ...activeUser, ...updatedUser };
+      setActiveUser(merged);
+      localStorage.setItem('cookscape_active_user', JSON.stringify(merged));
+      setRepInfo({
+        name: merged.name || '',
+        contact: merged.contactNumber || merged.contact || '',
+        email: merged.email || ''
+      });
+      showToast(`User details for "${merged.name}" updated.`);
+    }
   };
 
   // Re-edit a past generated quotation
@@ -613,7 +656,7 @@ export default function App() {
         onOpenHistory={() => setIsHistoryOpen(true)}
         historyCount={quotations.length}
         activeUser={activeUser}
-        onLogout={handleLogout}
+        onLogout={() => setIsLogoutPromptOpen(true)}
         onOpenUserManagement={() => setIsUserManagementOpen(true)}
         isInstallable={isInstallable}
         isOnline={isOnline}
@@ -714,6 +757,7 @@ export default function App() {
             setClientInfo={setClientInfo}
             repInfo={repInfo}
             setRepInfo={setRepInfo}
+            activeUser={activeUser}
             onNext={() => setCurrentStep(2)}
           />
         )}
@@ -794,6 +838,8 @@ export default function App() {
       <UserManagementModal
         isOpen={isUserManagementOpen}
         onClose={() => setIsUserManagementOpen(false)}
+        activeUser={activeUser}
+        onUserUpdated={handleUserUpdated}
       />
 
       {/* Live PDF Viewer Modal */}
@@ -803,6 +849,47 @@ export default function App() {
         pdfUrl={pdfPreview.url}
         title={pdfPreview.title}
       />
+
+      {/* Logout Confirmation Prompt Modal */}
+      {isLogoutPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white w-full max-w-sm rounded-2xl border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <LogOut className="w-6 h-6" />
+            </div>
+
+            <div className="text-center space-y-1.5">
+              <h3 className="text-lg font-bold text-slate-900 font-['Outfit']">Sign Out Confirmation</h3>
+              <p className="text-xs text-slate-600">
+                Are you sure you want to log out of your session as <strong className="text-slate-900">{activeUser?.name || activeUser?.username}</strong>?
+              </p>
+              <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg py-1 px-2.5 mt-2 font-medium">
+                ✓ Your draft quotation is automatically saved.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLogoutPromptOpen(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogoutPromptOpen(false);
+                  handleLogout();
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-colors shadow-sm shadow-rose-600/30 cursor-pointer"
+              >
+                Yes, Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500 bg-white">

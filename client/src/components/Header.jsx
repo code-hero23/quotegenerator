@@ -16,23 +16,23 @@ export default function Header({
 }) {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-40 shadow-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2">
+      <div className="w-full px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
         
         {/* Brand & Logo */}
         <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
           <div className="h-9 sm:h-12 w-auto flex items-center justify-center p-1 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden shrink-0">
             <img src="/logo.jpeg" alt="Cookscape Logo" className="h-7 sm:h-10 w-auto object-contain rounded-lg" />
           </div>
-          <span className="hidden sm:inline-block text-[10px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 shrink-0">
+          <span className="hidden xl:inline-block text-[10px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 font-bold border border-amber-200 shrink-0">
             QUOTE GENERATOR
           </span>
         </div>
 
         {/* User Profile & Actions */}
-        <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
           
-          {/* Master Template Badge (hidden on mobile and tablet) */}
-          <div className="hidden xl:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+          {/* Master Template Badge (hidden on screens smaller than 2xl to preserve space) */}
+          <div className="hidden 2xl:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
             <FileText className="w-4 h-4 text-amber-600" />
             <span className="text-slate-700 font-medium">Master-Template.pptx</span>
             <span className="text-emerald-600 font-bold">• 29 Slides</span>
@@ -44,7 +44,7 @@ export default function Header({
               type="button"
               onClick={onSaveNow}
               title={lastSavedAt ? `Autosaved at ${lastSavedAt.toLocaleTimeString()} (Click to save now)` : 'Click to save draft now'}
-              className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+              className={`hidden sm:flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                 autosaveStatus === 'saving'
                   ? 'bg-amber-50 border-amber-300 text-amber-800'
                   : autosaveStatus === 'saved'
@@ -63,23 +63,25 @@ export default function Header({
               {autosaveStatus === 'saved' && (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>
+                  <span className="hidden 2xl:inline">
                     {lastSavedAt
-                      ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
+                      ? `Saved ${lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                       : 'Draft Saved'}
                   </span>
+                  <span className="2xl:hidden">Saved</span>
                 </>
               )}
               {autosaveStatus === 'unsaved' && (
                 <>
                   <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                  <span>Unsaved edits</span>
+                  <span className="hidden lg:inline">Unsaved edits</span>
+                  <span className="lg:hidden">Unsaved</span>
                 </>
               )}
               {autosaveStatus === 'error' && (
                 <>
                   <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                  <span>Autosave failed</span>
+                  <span>Error</span>
                 </>
               )}
             </button>
@@ -89,7 +91,7 @@ export default function Header({
           {activeUser?.role === 'admin' && (
             <button
               onClick={onOpenUserManagement}
-              className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 shadow-2xs transition-colors shrink-0 cursor-pointer"
+              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 shadow-2xs transition-colors shrink-0 cursor-pointer"
               title="Manage Feasibility Architects & User Access"
             >
               <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />
@@ -101,12 +103,12 @@ export default function Header({
           {/* Quotes Vault / History Button */}
           <button
             onClick={onOpenHistory}
-            className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs transition-colors shrink-0 cursor-pointer"
+            className="flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs transition-colors shrink-0 cursor-pointer"
             title="Quotation Vault & History"
           >
             <History className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
-            <span className="hidden md:inline">Quotation Vault</span>
-            <span className="hidden sm:inline md:hidden">Vault</span>
+            <span className="hidden lg:inline">Quotation Vault</span>
+            <span className="hidden sm:inline lg:hidden">Vault</span>
             {historyCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] sm:text-[11px] font-bold">
                 {historyCount}
@@ -118,11 +120,11 @@ export default function Header({
           {isInstallable && (
             <button
               onClick={onInstall}
-              className="flex items-center space-x-1 sm:space-x-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border border-amber-400 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer animate-pulse"
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white border border-amber-400 text-xs font-bold shadow-xs transition-all shrink-0 cursor-pointer animate-pulse"
               title="Install Cookscape App to Desktop or Home Screen"
             >
               <Download className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden lg:inline">Install App</span>
+              <span className="hidden 2xl:inline">Install App</span>
             </button>
           )}
 
@@ -137,44 +139,45 @@ export default function Header({
             </div>
           )}
 
-          {/* Responsive User Badge & Logout */}
+          {/* User Badge & Prominent Logout */}
           {activeUser && (
-            <div className="flex items-center space-x-1 sm:space-x-2 pl-1 sm:pl-2 border-l border-slate-200 shrink-0">
+            <div className="flex items-center space-x-1.5 sm:space-x-2 pl-1.5 sm:pl-2.5 border-l border-slate-200 shrink-0">
               {/* User Chip */}
               <div
-                className={`flex items-center space-x-1.5 sm:space-x-2 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border text-xs shrink-0 transition-colors ${
+                className={`flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border text-xs shrink-0 transition-colors ${
                   activeUser.role === 'admin'
                     ? 'bg-amber-50/80 border-amber-200 text-amber-950'
                     : 'bg-sky-50/80 border-sky-200 text-sky-950'
                 }`}
                 title={`${activeUser.name || activeUser.username} (${activeUser.role === 'admin' ? 'Administrator' : 'Feasibility Architect'})`}
               >
-                {/* Avatar Initials / Icon */}
-                <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-xs shrink-0 text-white shadow-2xs ${
+                {/* Avatar Initials */}
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 text-white shadow-2xs ${
                   activeUser.role === 'admin' ? 'bg-amber-600' : 'bg-sky-600'
                 }`}>
                   {(activeUser.name || activeUser.username || 'U').charAt(0).toUpperCase()}
                 </div>
 
-                {/* User Details (Text collapses on narrow screens) */}
-                <div className="hidden sm:block text-left min-w-0 max-w-[90px] md:max-w-[130px] lg:max-w-[170px]">
+                {/* User Details */}
+                <div className="hidden lg:block text-left min-w-0 max-w-[100px] xl:max-w-[140px]">
                   <span className="font-bold capitalize block leading-tight truncate text-xs text-slate-900">
                     {activeUser.name || activeUser.username}
                   </span>
                   <span className="text-[9px] uppercase font-semibold text-slate-500 block leading-tight truncate">
-                    {activeUser.role === 'admin' ? 'Admin' : 'Architect'}
+                    {activeUser.role === 'admin' ? 'Administrator' : 'Architect'}
                   </span>
                 </div>
               </div>
 
-              {/* Sign Out Button */}
+              {/* High-Visibility Logout Button - Always Visible! */}
               <button
+                type="button"
                 onClick={onLogout}
-                className="flex items-center space-x-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-semibold transition-colors shrink-0 cursor-pointer"
+                className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-800 border border-rose-300 hover:border-rose-400 text-xs font-bold transition-all shadow-xs hover:shadow-sm cursor-pointer shrink-0"
                 title={`Sign out (${activeUser.name || activeUser.username})`}
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Sign Out</span>
+                <LogOut className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="font-bold">Logout</span>
               </button>
             </div>
           )}

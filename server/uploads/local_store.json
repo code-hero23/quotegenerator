@@ -110,7 +110,8 @@
       "contactNumber": "94444 88888",
       "email": "admin@cookscape.in",
       "role": "admin",
-      "title": "System Administrator"
+      "title": "System Administrator",
+      "updatedAt": "2026-10-14T11:05:28.622Z"
     },
     {
       "id": "user-arch-aravindan",

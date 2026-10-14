@@ -69,6 +69,31 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PUT /api/users/:id - Update user details (Admin only)
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, password, name, contactNumber, email, role } = req.body;
+
+    const updatedUser = await dbService.updateUser(id, {
+      username,
+      password,
+      name,
+      contactNumber,
+      email,
+      role
+    });
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      data: updatedUser
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
 // DELETE /api/users/:id - Delete architect (Admin only)
 router.delete('/:id', async (req, res) => {
   try {

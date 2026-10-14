@@ -1,7 +1,7 @@
 import React from 'react';
 import { User, Phone, MapPin, Mail, Calendar, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 
-export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setRepInfo, onNext }) {
+export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setRepInfo, activeUser, onNext }) {
 
   const loadTemplateDefaults = () => {
     setClientInfo({
@@ -10,11 +10,19 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
       location: 'Prestige Falcon City, Adyar',
       date: new Date().toLocaleDateString('en-GB')
     });
-    setRepInfo({
-      name: 'Cookscape Representative',
-      contact: '98400 12345',
-      email: 'sales@cookscape.in'
-    });
+    if (activeUser) {
+      setRepInfo({
+        name: activeUser.name || activeUser.username || '',
+        contact: activeUser.contactNumber || activeUser.contact || '',
+        email: activeUser.email || ''
+      });
+    } else {
+      setRepInfo({
+        name: 'Cookscape Representative',
+        contact: '98400 12345',
+        email: 'sales@cookscape.in'
+      });
+    }
   };
 
   const loadSampleClient = () => {
@@ -24,11 +32,19 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
       location: 'Skyline Waterfront Penthouse, ECR',
       date: new Date().toLocaleDateString('en-GB')
     });
-    setRepInfo({
-      name: 'Karthik Ramanathan',
-      contact: '94444 88888',
-      email: 'karthik@cookscape.in'
-    });
+    if (activeUser) {
+      setRepInfo({
+        name: activeUser.name || activeUser.username || '',
+        contact: activeUser.contactNumber || activeUser.contact || '',
+        email: activeUser.email || ''
+      });
+    } else {
+      setRepInfo({
+        name: 'Karthik Ramanathan',
+        contact: '94444 88888',
+        email: 'karthik@cookscape.in'
+      });
+    }
   };
 
   const clearFields = () => {
@@ -172,14 +188,32 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
 
         {/* Sales Rep / Designer Section */}
         <div className="glass-panel p-6 space-y-5">
-          <div className="flex items-center space-x-3 pb-3 border-b border-slate-200">
-            <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center text-sky-700">
-              <ShieldCheck className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-lg bg-sky-100 flex items-center justify-center text-sky-700">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Sales Representative / Designer</h3>
+                <p className="text-xs text-slate-500">Appears in Designer Details box on Cover Page</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Sales Representative / Designer</h3>
-              <p className="text-xs text-slate-500">Appears in Designer Details box on Cover Page</p>
-            </div>
+            {activeUser && (
+              <button
+                type="button"
+                onClick={() => {
+                  setRepInfo({
+                    name: activeUser.name || activeUser.username || '',
+                    contact: activeUser.contactNumber || activeUser.contact || '',
+                    email: activeUser.email || ''
+                  });
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-semibold border border-sky-200 transition-colors flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+                title="Fill designer info with your logged-in profile"
+              >
+                <span>Use My Profile ({activeUser.name || activeUser.username})</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -189,7 +223,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Mr. Abishek / Karthik Ramanathan"
+                  placeholder={activeUser?.name || "e.g. Feasibility Architect Name"}
                   value={repInfo.name || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, name: e.target.value })}
                 />
@@ -203,7 +237,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. 93611 84787"
+                  placeholder={activeUser?.contactNumber || "e.g. 94444 88888"}
                   value={repInfo.contact || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, contact: e.target.value })}
                 />
@@ -217,7 +251,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="email"
                   className="form-input pl-11"
-                  placeholder="e.g. designs.cookscape@gmail.com"
+                  placeholder={activeUser?.email || "e.g. architect@cookscape.in"}
                   value={repInfo.email || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, email: e.target.value })}
                 />

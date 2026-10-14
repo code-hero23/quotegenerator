@@ -392,6 +392,52 @@ const dbService = {
     return true;
   },
 
+  async updateUser(userId, updateData) {
+    const store = loadLocalStore();
+    if (!store.users) store.users = [...defaultUsers];
+
+    const user = store.users.find(u => u.id === userId || u.username === userId);
+    if (!user) throw new Error('User not found.');
+
+    if (updateData.username) {
+      const cleanUser = String(updateData.username).trim().toLowerCase();
+      const duplicate = store.users.some(u => (u.id !== user.id) && u.username && u.username.toLowerCase() === cleanUser);
+      if (duplicate) throw new Error(`Username "${cleanUser}" is already taken by another user.`);
+      user.username = cleanUser;
+    }
+
+    if (updateData.name !== undefined && String(updateData.name).trim()) {
+      user.name = String(updateData.name).trim();
+    }
+    if (updateData.password && String(updateData.password).trim()) {
+      user.password = String(updateData.password).trim();
+    }
+    if (updateData.contactNumber !== undefined) {
+      user.contactNumber = String(updateData.contactNumber).trim();
+    }
+    if (updateData.email !== undefined) {
+      user.email = String(updateData.email).trim();
+    }
+    if (updateData.role && user.username !== 'admin') {
+      user.role = updateData.role;
+      user.title = updateData.role === 'admin' ? 'Administrator' : 'Feasibility Architect';
+    }
+
+    user.updatedAt = new Date().toISOString();
+    saveLocalStore(store);
+
+    return {
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      contactNumber: user.contactNumber,
+      email: user.email,
+      role: user.role,
+      title: user.title,
+      updatedAt: user.updatedAt
+    };
+  },
+
   async getClients() {
     const store = loadLocalStore();
     return store.clients || defaultClients;

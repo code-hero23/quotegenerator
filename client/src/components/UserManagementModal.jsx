@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   X, UserPlus, Users, Trash2, CheckCircle2, AlertCircle, 
-  ShieldCheck, Compass, Phone, Mail, Key, User, Loader2 
+  ShieldCheck, Compass, Phone, Mail, Key, User, Loader2,
+  Pencil, Check
 } from 'lucide-react';
 
-export default function UserManagementModal({ isOpen, onClose }) {
+export default function UserManagementModal({ isOpen, onClose, activeUser, onUserUpdated }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -22,11 +23,24 @@ export default function UserManagementModal({ isOpen, onClose }) {
     role: 'architect'
   });
 
+  // Edit User State
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    username: '',
+    password: '',
+    contactNumber: '',
+    email: '',
+    role: 'architect'
+  });
+  const [editLoading, setEditLoading] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers();
       setError(null);
       setSuccessMsg(null);
+      setEditingUserId(null);
     }
   }, [isOpen]);
 
@@ -85,6 +99,79 @@ export default function UserManagementModal({ isOpen, onClose }) {
     }
   };
 
+  const handleStartEdit = (user) => {
+    setEditingUserId(user.id);
+    setEditFormData({
+      name: user.name || '',
+      username: user.username || '',
+      password: '',
+      contactNumber: user.contactNumber === 'N/A' ? '' : (user.contactNumber || ''),
+      email: user.email || '',
+      role: user.role || 'architect'
+    });
+    setError(null);
+    setSuccessMsg(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setEditFormData({
+      name: '',
+      username: '',
+      password: '',
+      contactNumber: '',
+      email: '',
+      role: 'architect'
+    });
+  };
+
+  const handleSaveEdit = async (userId) => {
+    setError(null);
+    setSuccessMsg(null);
+
+    const trimmedName = editFormData.name.trim();
+    const trimmedUsername = editFormData.username.trim().toLowerCase();
+
+    if (!trimmedName || !trimmedUsername) {
+      setError('Full Name and Username cannot be empty.');
+      return;
+    }
+
+    setEditLoading(true);
+    try {
+      const payload = {
+        name: trimmedName,
+        username: trimmedUsername,
+        contactNumber: editFormData.contactNumber.trim(),
+        email: editFormData.email.trim(),
+        role: editFormData.role
+      };
+
+      if (editFormData.password && editFormData.password.trim()) {
+        payload.password = editFormData.password.trim();
+      }
+
+      const res = await axios.put(`/api/users/${userId}`, payload);
+
+      if (res.data && res.data.success) {
+        const updated = res.data.data;
+        setSuccessMsg(`User "${trimmedName}" updated successfully!`);
+        setEditingUserId(null);
+        await fetchUsers();
+        if (onUserUpdated) {
+          onUserUpdated(updated);
+        }
+      } else {
+        throw new Error(res.data?.error || 'Failed to update user.');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Error updating user.';
+      setError(msg);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const handleDeleteUser = async (userId, username) => {
     if (!window.confirm(`Are you sure you want to remove architect account "${username}"?`)) {
       return;
@@ -126,7 +213,7 @@ export default function UserManagementModal({ isOpen, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-medium hidden sm:block">
-                Provision login credentials for Feasibility Architects and govern system access.
+                Provision and edit login credentials, contact numbers, and roles for Feasibility Architects and Administrators.
               </p>
             </div>
           </div>
@@ -146,7 +233,7 @@ export default function UserManagementModal({ isOpen, onClose }) {
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="font-bold underline ml-2">Dismiss</button>
+            <button onClick={() => setError(null)} className="font-bold underline ml-2 cursor-pointer">Dismiss</button>
           </div>
         )}
 
@@ -156,7 +243,7 @@ export default function UserManagementModal({ isOpen, onClose }) {
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
               <span>{successMsg}</span>
             </div>
-            <button onClick={() => setSuccessMsg(null)} className="font-bold underline ml-2">Dismiss</button>
+            <button onClick={() => setSuccessMsg(null)} className="font-bold underline ml-2 cursor-pointer">Dismiss</button>
           </div>
         )}
 
@@ -262,7 +349,7 @@ export default function UserManagementModal({ isOpen, onClose }) {
                   <button
                     type="submit"
                     disabled={actionLoading}
-                    className="btn-gold w-full py-2.5 text-xs font-bold shadow-xs flex items-center justify-center space-x-1.5"
+                    className="btn-gold w-full py-2.5 text-xs font-bold shadow-xs flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     {actionLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -295,6 +382,152 @@ export default function UserManagementModal({ isOpen, onClose }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {users.map((user) => {
                   const isAdmin = user.role === 'admin';
+                  const isEditingThisUser = editingUserId === user.id;
+
+                  if (isEditingThisUser) {
+                    return (
+                      <div
+                        key={user.id}
+                        className="col-span-1 md:col-span-2 p-5 rounded-xl bg-amber-50/40 border-2 border-amber-400 shadow-md space-y-4 animate-fadeIn"
+                      >
+                        <div className="flex items-center justify-between pb-2 border-b border-amber-200">
+                          <div className="flex items-center space-x-2">
+                            <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
+                              <Pencil className="w-4 h-4" />
+                            </span>
+                            <span className="text-sm font-bold text-slate-900 font-['Outfit']">
+                              Edit User Details: <span className="text-amber-800">{user.name}</span>
+                            </span>
+                          </div>
+                          <span className="text-xs text-amber-800 font-medium">
+                            Username: <span className="font-mono font-bold">{user.username}</span>
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {/* Full Name */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Full Name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={editFormData.name}
+                              onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                              className="form-input text-xs py-2"
+                              placeholder="e.g. Arun Kumar"
+                            />
+                          </div>
+
+                          {/* Username */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Login Username *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              disabled={user.username === 'admin'}
+                              value={editFormData.username}
+                              onChange={(e) => setEditFormData({ ...editFormData, username: e.target.value })}
+                              className="form-input text-xs py-2 disabled:bg-slate-100 disabled:text-slate-400"
+                              placeholder="e.g. arun_arch"
+                            />
+                          </div>
+
+                          {/* New Password */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Password <span className="text-slate-400 font-normal lowercase">(leave empty to keep unchanged)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={editFormData.password}
+                              onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                              className="form-input text-xs py-2"
+                              placeholder="Enter new password to update"
+                            />
+                          </div>
+
+                          {/* Contact Phone */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Contact Phone
+                            </label>
+                            <input
+                              type="text"
+                              value={editFormData.contactNumber}
+                              onChange={(e) => setEditFormData({ ...editFormData, contactNumber: e.target.value })}
+                              className="form-input text-xs py-2"
+                              placeholder="e.g. 98765 43210"
+                            />
+                          </div>
+
+                          {/* Email Address */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Email Address
+                            </label>
+                            <input
+                              type="email"
+                              value={editFormData.email}
+                              onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                              className="form-input text-xs py-2"
+                              placeholder="e.g. arun@cookscape.in"
+                            />
+                          </div>
+
+                          {/* Role */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              Account Role
+                            </label>
+                            <select
+                              value={editFormData.role}
+                              disabled={user.username === 'admin'}
+                              onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                              className="form-input text-xs py-2 disabled:bg-slate-100 disabled:text-slate-400"
+                            >
+                              <option value="architect">Feasibility Architect</option>
+                              <option value="admin">Administrator</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Save & Cancel Buttons */}
+                        <div className="flex items-center justify-end space-x-2 pt-2 border-t border-amber-200">
+                          <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            disabled={editLoading}
+                            className="btn-secondary py-1.5 px-4 text-xs cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEdit(user.id)}
+                            disabled={editLoading}
+                            className="btn-gold py-1.5 px-5 text-xs font-bold flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                          >
+                            {editLoading ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Saving...</span>
+                              </>
+                            ) : (
+                              <>
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Save Changes</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={user.id}
@@ -335,16 +568,29 @@ export default function UserManagementModal({ isOpen, onClose }) {
                         </div>
                       </div>
 
-                      {!isAdmin && (
+                      <div className="flex items-center space-x-1 shrink-0 ml-2">
+                        {/* Edit Button */}
                         <button
                           type="button"
-                          onClick={() => handleDeleteUser(user.id, user.name)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer ml-2 shrink-0"
-                          title="Remove Architect Account"
+                          onClick={() => handleStartEdit(user)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
+                          title={`Edit ${user.name}`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
-                      )}
+
+                        {/* Delete Button (non-admin or non-root) */}
+                        {!isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(user.id, user.name)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Remove Architect Account"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -359,7 +605,7 @@ export default function UserManagementModal({ isOpen, onClose }) {
           <span>Feasibility Architects can only view quotations generated by their account.</span>
           <button
             onClick={onClose}
-            className="btn-secondary py-1.5 px-4 text-xs font-semibold"
+            className="btn-secondary py-1.5 px-4 text-xs font-semibold cursor-pointer"
           >
             Close
           </button>

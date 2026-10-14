@@ -512,6 +512,10 @@ export default function App() {
       if (activeUser) {
         formData.append('userId', activeUser.id);
         formData.append('userRole', activeUser.role);
+        if (activeUser.bhId) {
+          formData.append('bhId', activeUser.bhId);
+          formData.append('bhName', activeUser.bhName || '');
+        }
       }
 
       // Append snip images or preserve existing preview URLs on re-edit

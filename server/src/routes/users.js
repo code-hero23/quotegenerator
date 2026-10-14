@@ -31,20 +31,21 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// GET /api/users - List all users (Sanitized)
+// GET /api/users - List users (scoped by role & user)
 router.get('/', async (req, res) => {
   try {
-    const users = await dbService.getUsers();
+    const { userId, role } = req.query;
+    const users = await dbService.getUsers({ userId, role });
     res.json({ success: true, count: users.length, data: users });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-// POST /api/users - Create new Feasibility Architect (Admin only)
+// POST /api/users - Create new User (Admin or Business Head)
 router.post('/', async (req, res) => {
   try {
-    const { username, password, name, contactNumber, email, role } = req.body;
+    const { username, password, name, contactNumber, email, role, bhId, bhName } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ success: false, error: 'Username and password are required.' });
@@ -56,12 +57,14 @@ router.post('/', async (req, res) => {
       name: name || username,
       contactNumber,
       email,
-      role: role || 'architect'
+      role: role || 'fa',
+      bhId,
+      bhName
     });
 
     res.status(201).json({
       success: true,
-      message: 'Feasibility Architect created successfully',
+      message: 'User created successfully',
       data: newUser
     });
   } catch (error) {
@@ -69,11 +72,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/users/:id - Update user details (Admin only)
+// PUT /api/users/:id - Update user details
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, password, name, contactNumber, email, role } = req.body;
+    const { username, password, name, contactNumber, email, role, bhId, bhName } = req.body;
 
     const updatedUser = await dbService.updateUser(id, {
       username,
@@ -81,7 +84,9 @@ router.put('/:id', async (req, res) => {
       name,
       contactNumber,
       email,
-      role
+      role,
+      bhId,
+      bhName
     });
 
     res.json({

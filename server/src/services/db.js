@@ -85,6 +85,28 @@ const defaultVariants = [
   }
 ];
 
+function normalizeRole(role) {
+  if (!role) return 'fa';
+  const r = String(role).trim().toLowerCase();
+  if (r === 'admin') return 'admin';
+  if (r === 'bh' || r === 'business_head' || r === 'businesshead') return 'bh';
+  if (r === 'la' || r === 'lead_architect' || r === 'leadarchitect') return 'la';
+  if (r === 'fa' || r === 'architect' || r === 'feasibility_architect') return 'fa';
+  return r;
+}
+
+function getRoleTitle(role) {
+  const r = normalizeRole(role);
+  switch (r) {
+    case 'admin': return 'System Administrator';
+    case 'bh': return 'Business Head';
+    case 'la': return 'Lead Architect';
+    case 'fa':
+    default:
+      return 'Feasibility Architect';
+  }
+}
+
 const defaultUsers = [
   {
     id: 'user-admin-1',
@@ -97,14 +119,26 @@ const defaultUsers = [
     title: 'System Administrator'
   },
   {
+    id: 'user-bh-1',
+    username: 'suresh_bh',
+    password: 'bh123',
+    name: 'Suresh Kumar',
+    contactNumber: '98400 11223',
+    email: 'suresh.bh@cookscape.in',
+    role: 'bh',
+    title: 'Business Head'
+  },
+  {
     id: 'user-sales-rep-1',
     username: 'abishek',
     password: 'arch123',
     name: 'Mr. Abishek',
     contactNumber: '93611 84787',
     email: 'designs.cookscape@gmail.com',
-    role: 'architect',
-    title: 'Feasibility Architect'
+    role: 'fa',
+    title: 'Feasibility Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
   },
   {
     id: 'user-arch-abirami',
@@ -113,8 +147,10 @@ const defaultUsers = [
     name: 'Abirami.K',
     contactNumber: '94444 88888',
     email: 'abirami@cookscape.in',
-    role: 'architect',
-    title: 'Feasibility Architect'
+    role: 'fa',
+    title: 'Feasibility Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
   },
   {
     id: 'user-arch-aravindan',
@@ -123,8 +159,10 @@ const defaultUsers = [
     name: 'Aravindan',
     contactNumber: '7418414780',
     email: 'aravind@cookscape.in',
-    role: 'architect',
-    title: 'Feasibility Architect'
+    role: 'la',
+    title: 'Lead Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
   }
 ];
 
@@ -168,7 +206,26 @@ function loadLocalStore() {
             updated = true;
           }
 
-          // Ensure every user has username, password, role
+          // Ensure default Business Head exists so user can immediately test BH workflow
+          const hasBh = parsed.users.some(u => u.role === 'bh' || u.username === 'suresh_bh');
+          if (!hasBh) {
+            const bhUser = defaultUsers.find(u => u.role === 'bh') || {
+              id: 'user-bh-1',
+              username: 'suresh_bh',
+              password: 'bh123',
+              name: 'Suresh Kumar',
+              contactNumber: '98400 11223',
+              email: 'suresh.bh@cookscape.in',
+              role: 'bh',
+              title: 'Business Head'
+            };
+            parsed.users.push(bhUser);
+            updated = true;
+          }
+
+          const defaultBh = parsed.users.find(u => u.role === 'bh');
+
+          // Ensure every user has username, password, role, title, and bhId if FA/LA
           parsed.users.forEach((u, i) => {
             if (!u.username) {
               u.username = u.name ? u.name.toLowerCase().replace(/[^a-z0-9]/g, '') : `user${i}`;
@@ -178,9 +235,24 @@ function loadLocalStore() {
               u.password = 'arch123';
               updated = true;
             }
-            if (!u.role || (u.username !== 'admin' && u.role !== 'architect')) {
-              u.role = u.username === 'admin' ? 'admin' : 'architect';
-              u.title = u.role === 'admin' ? 'Administrator' : 'Feasibility Architect';
+            if (u.username === 'aravindan' && (!u.role || u.role === 'fa' || u.role === 'architect')) {
+              u.role = 'la';
+              updated = true;
+            }
+            const norm = normalizeRole(u.role);
+            if (u.role !== norm) {
+              u.role = norm;
+              updated = true;
+            }
+            const properTitle = getRoleTitle(u.role);
+            if (!u.title || u.title !== properTitle) {
+              u.title = properTitle;
+              updated = true;
+            }
+            // Link existing FAs and LAs to the default BH if unassigned
+            if ((u.role === 'fa' || u.role === 'la') && !u.bhId && defaultBh) {
+              u.bhId = defaultBh.id;
+              u.bhName = defaultBh.name || defaultBh.username;
               updated = true;
             }
           });
@@ -239,19 +311,44 @@ const dbService = {
     return (store.variants || []).find(v => v.id === id);
   },
 
-  async getUsers() {
+  async getUsers({ role, userId } = {}) {
     const store = loadLocalStore();
-    // Return users without exposing raw passwords in public lists
-    return (store.users || defaultUsers).map(u => ({
-      id: u.id,
-      username: u.username,
-      name: u.name,
-      contactNumber: u.contactNumber,
-      email: u.email,
-      role: u.role || 'architect',
-      title: u.title || (u.role === 'admin' ? 'Administrator' : 'Feasibility Architect'),
-      createdAt: u.createdAt
-    }));
+    const allUsers = store.users || defaultUsers;
+
+    let filtered = allUsers;
+    const normRole = role ? normalizeRole(role) : null;
+
+    if (normRole === 'bh' && userId) {
+      // Business Head can view details about their team (FAs and LAs assigned to them) + themselves
+      filtered = allUsers.filter(u => u.id === userId || u.bhId === userId || u.username === userId);
+    } else if ((normRole === 'fa' || normRole === 'la') && userId) {
+      // FA and LA can only view their own data
+      filtered = allUsers.filter(u => u.id === userId || u.username === userId);
+    }
+    // Admin (or unauthenticated list) sees all users
+
+    return filtered.map(u => {
+      const uRole = normalizeRole(u.role);
+      let bhName = u.bhName;
+      if (!bhName && u.bhId) {
+        const assignedBh = allUsers.find(b => b.id === u.bhId || b.username === u.bhId);
+        bhName = assignedBh?.name || assignedBh?.username || null;
+      }
+
+      return {
+        id: u.id,
+        username: u.username,
+        name: u.name,
+        contactNumber: u.contactNumber,
+        email: u.email,
+        role: uRole,
+        title: u.title || getRoleTitle(uRole),
+        bhId: u.bhId || null,
+        bhName: bhName || null,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt
+      };
+    });
   },
 
   async authenticateUser(username, password) {
@@ -279,53 +376,62 @@ const dbService = {
       }
     }
 
-    // 2. Abishek login: allow password 'abishek', 'arch123', 'admin', 'admin123'
+    // 2. Abishek login fallback
     if (cleanUser === 'abishek' || cleanUser === 'mrabishek') {
       const target = users.find(u => u.username === 'abishek' || u.username === 'mrabishek' || (u.name && u.name.toLowerCase().includes('abishek')));
-      if (!target) return null;
-      const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(target.password)];
-      if (validPass.includes(cleanPass)) {
-        return {
-          id: target.id,
-          username: target.username || 'abishek',
-          name: target.name || 'Mr. Abishek',
-          contactNumber: target.contactNumber || '93611 84787',
-          email: target.email || 'designs.cookscape@gmail.com',
-          role: 'architect',
-          title: 'Feasibility Architect'
-        };
+      if (target) {
+        const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(target.password)];
+        if (validPass.includes(cleanPass)) {
+          const uRole = normalizeRole(target.role || 'fa');
+          return {
+            id: target.id,
+            username: target.username || 'abishek',
+            name: target.name || 'Mr. Abishek',
+            contactNumber: target.contactNumber || '93611 84787',
+            email: target.email || 'designs.cookscape@gmail.com',
+            role: uRole,
+            title: getRoleTitle(uRole),
+            bhId: target.bhId || null,
+            bhName: target.bhName || null
+          };
+        }
       }
     }
 
-    // 3. Aravindan login: allow password 'aravind', 'aravindan', 'arch123', 'admin', 'admin123'
+    // 3. Aravindan login fallback
     if (cleanUser === 'aravindan' || cleanUser === 'aravind') {
       const target = users.find(u => u.username === 'aravindan' || u.username === 'aravind' || (u.name && u.name.toLowerCase().includes('aravindan')));
-      if (!target) return null;
-      const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(target.password)];
-      if (validPass.includes(cleanPass)) {
-        return {
-          id: target.id,
-          username: target.username || 'aravindan',
-          name: target.name || 'Aravindan',
-          contactNumber: target.contactNumber || '7418414780',
-          email: target.email || 'aravind@cookscape.in',
-          role: 'architect',
-          title: 'Feasibility Architect'
-        };
+      if (target) {
+        const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(target.password)];
+        if (validPass.includes(cleanPass)) {
+          const uRole = normalizeRole(target.role || 'la');
+          return {
+            id: target.id,
+            username: target.username || 'aravindan',
+            name: target.name || 'Aravindan',
+            contactNumber: target.contactNumber || '7418414780',
+            email: target.email || 'aravind@cookscape.in',
+            role: uRole,
+            title: getRoleTitle(uRole),
+            bhId: target.bhId || null,
+            bhName: target.bhName || null
+          };
+        }
       }
     }
 
-    // 4. Any other registered architect in store
+    // 4. Any other registered user (Admin, Business Head, FA, LA) in store
     const matched = users.find(u => {
       const uName = (u.username || '').toLowerCase();
       const realName = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const matchUser = uName === cleanUser || realName === cleanUser.replace(/[^a-z0-9]/g, '');
       if (!matchUser) return false;
 
-      // Allow password match, or standard fallback arch123/admin123/their own username
+      // Allow password match, or standard fallback arch123/bh123/admin123/their own username
       return (
         String(u.password) === cleanPass ||
         cleanPass === 'arch123' ||
+        cleanPass === 'bh123' ||
         cleanPass === 'admin123' ||
         cleanPass === 'admin' ||
         cleanPass === cleanUser
@@ -334,14 +440,23 @@ const dbService = {
 
     if (!matched) return null;
 
+    const uRole = normalizeRole(matched.role);
+    let bhName = matched.bhName;
+    if (!bhName && matched.bhId) {
+      const assignedBh = users.find(b => b.id === matched.bhId || b.username === matched.bhId);
+      bhName = assignedBh?.name || assignedBh?.username || null;
+    }
+
     return {
       id: matched.id,
       username: matched.username,
       name: matched.name,
       contactNumber: matched.contactNumber,
       email: matched.email,
-      role: matched.role || 'architect',
-      title: matched.title || (matched.role === 'admin' ? 'Administrator' : 'Feasibility Architect')
+      role: uRole,
+      title: matched.title || getRoleTitle(uRole),
+      bhId: matched.bhId || null,
+      bhName: bhName || null
     };
   },
 
@@ -358,16 +473,37 @@ const dbService = {
       throw new Error(`Username "${cleanUsername}" is already taken. Please choose another.`);
     }
 
+    const targetRole = normalizeRole(userData.role || 'fa');
+    let assignedBhId = null;
+    let assignedBhName = null;
+
+    // While creating FA and LA, they should be assigned under a Business Head (BH)
+    if (targetRole === 'fa' || targetRole === 'la') {
+      if (userData.bhId) {
+        const bh = store.users.find(u => u.id === userData.bhId || u.username === userData.bhId);
+        if (bh) {
+          assignedBhId = bh.id;
+          assignedBhName = bh.name || bh.username;
+        } else {
+          assignedBhId = userData.bhId;
+          assignedBhName = userData.bhName || null;
+        }
+      }
+    }
+
     const newUser = {
-      id: `user-arch-${Date.now()}`,
+      id: `user-${targetRole}-${Date.now()}`,
       username: cleanUsername,
       password: String(userData.password).trim(),
       name: userData.name || userData.username,
       contactNumber: userData.contactNumber || 'N/A',
       email: userData.email || '',
-      role: userData.role || 'architect',
-      title: userData.role === 'admin' ? 'Administrator' : 'Feasibility Architect',
-      createdAt: new Date()
+      role: targetRole,
+      title: getRoleTitle(targetRole),
+      bhId: assignedBhId,
+      bhName: assignedBhName,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     store.users.push(newUser);
@@ -381,6 +517,8 @@ const dbService = {
       email: newUser.email,
       role: newUser.role,
       title: newUser.title,
+      bhId: newUser.bhId,
+      bhName: newUser.bhName,
       createdAt: newUser.createdAt
     };
   },
@@ -429,8 +567,26 @@ const dbService = {
       user.email = String(updateData.email).trim();
     }
     if (updateData.role && user.username !== 'admin') {
-      user.role = updateData.role;
-      user.title = updateData.role === 'admin' ? 'Administrator' : 'Feasibility Architect';
+      user.role = normalizeRole(updateData.role);
+      user.title = getRoleTitle(user.role);
+    }
+
+    // Assign / reassign under Business Head (for fa and la)
+    const currentRole = normalizeRole(user.role);
+    if (currentRole === 'fa' || currentRole === 'la') {
+      if (updateData.bhId !== undefined) {
+        if (updateData.bhId) {
+          const bh = store.users.find(u => u.id === updateData.bhId || u.username === updateData.bhId);
+          user.bhId = bh ? bh.id : updateData.bhId;
+          user.bhName = bh ? (bh.name || bh.username) : (updateData.bhName || null);
+        } else {
+          user.bhId = null;
+          user.bhName = null;
+        }
+      }
+    } else {
+      user.bhId = null;
+      user.bhName = null;
     }
 
     user.updatedAt = new Date().toISOString();
@@ -444,6 +600,8 @@ const dbService = {
       email: user.email,
       role: user.role,
       title: user.title,
+      bhId: user.bhId,
+      bhName: user.bhName,
       updatedAt: user.updatedAt
     };
   },
@@ -485,15 +643,33 @@ const dbService = {
     if (!store.quotations) store.quotations = [];
 
     const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Cookscape Representative';
+    const creatorUser = (store.users || []).find(u => u.id === quoteData.userId || u.username === quoteData.userId);
+
+    // Track BH assignment for this quote
+    let quoteBhId = quoteData.bhId || null;
+    let quoteBhName = quoteData.bhName || null;
+
+    if (creatorUser) {
+      const uRole = normalizeRole(creatorUser.role);
+      if (uRole === 'bh') {
+        quoteBhId = creatorUser.id;
+        quoteBhName = creatorUser.name || creatorUser.username;
+      } else if (creatorUser.bhId) {
+        quoteBhId = creatorUser.bhId;
+        quoteBhName = creatorUser.bhName || null;
+      }
+    }
 
     const newQuote = {
       id: quoteData.id || `quote-${Date.now()}`,
       ...quoteData,
       architect: architectName,
+      bhId: quoteBhId,
+      bhName: quoteBhName,
       createdAt: new Date(),
       updatedAt: new Date(),
       client: (store.clients || []).find(c => c.id === quoteData.clientId) || { name: quoteData.clientInfo?.name || 'Client' },
-      user: (store.users || []).find(u => u.id === quoteData.userId) || { name: architectName, role: quoteData.userRole || 'architect' }
+      user: creatorUser || { name: architectName, role: quoteData.userRole || 'fa' }
     };
 
     store.quotations.unshift(newQuote);
@@ -504,15 +680,41 @@ const dbService = {
   async getQuotations({ userId, role } = {}) {
     const store = loadLocalStore();
     const all = store.quotations || [];
+    const normRole = role ? normalizeRole(role) : null;
 
-    // Admin can view all quotations
-    if (role === 'admin') {
+    // 1. Admin can view ALL quotations across the studio
+    if (normRole === 'admin') {
       return all;
     }
 
-    // Feasibility Architect can only view quotations created by them
-    if (role === 'architect' && userId) {
-      const targetUser = (store.users || []).find(u => u.id === userId);
+    // 2. Business Head (BH): can view their own quotes + quotes created by FAs and LAs assigned to them!
+    if (normRole === 'bh' && userId) {
+      const allUsers = store.users || defaultUsers;
+      const myTeamUsers = allUsers.filter(u => u.bhId === userId || u.id === userId);
+      const teamUserIds = new Set(myTeamUsers.map(u => u.id));
+      const teamUsernames = new Set(myTeamUsers.map(u => (u.username || '').toLowerCase()));
+      const teamNames = new Set(myTeamUsers.map(u => (u.name || '').toLowerCase()));
+
+      return all.filter(q => {
+        // Tagged by bhId directly
+        if (q.bhId === userId) return true;
+        // Created by BH or someone in their team
+        if (q.userId && teamUserIds.has(q.userId)) return true;
+        if (q.user?.id && teamUserIds.has(q.user.id)) return true;
+        // Creator name or username in team
+        const qArch = (q.architect || q.repInfo?.name || q.user?.name || '').toLowerCase();
+        for (const name of teamNames) {
+          if (name && qArch.includes(name)) return true;
+        }
+        const qUser = (q.user?.username || '').toLowerCase();
+        if (qUser && teamUsernames.has(qUser)) return true;
+        return false;
+      });
+    }
+
+    // 3. FA and LA: can view their data ONLY
+    if ((normRole === 'fa' || normRole === 'la' || normRole === 'architect') && userId) {
+      const targetUser = (store.users || []).find(u => u.id === userId || u.username === userId);
       const targetName = targetUser?.name?.toLowerCase();
       const targetEmail = targetUser?.email?.toLowerCase();
       const targetUsername = targetUser?.username?.toLowerCase();

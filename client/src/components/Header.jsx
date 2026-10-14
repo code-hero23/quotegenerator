@@ -87,15 +87,21 @@ export default function Header({
             </button>
           )}
 
-          {/* Admin Architects Management Button */}
-          {activeUser?.role === 'admin' && (
+          {/* Admin & BH Team / User Management Button */}
+          {(activeUser?.role === 'admin' || activeUser?.role === 'bh') && (
             <button
               onClick={onOpenUserManagement}
-              className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-xs font-bold text-amber-900 shadow-2xs transition-colors shrink-0 cursor-pointer"
-              title="Manage Feasibility Architects & User Access"
+              className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg border text-xs font-bold shadow-2xs transition-colors shrink-0 cursor-pointer ${
+                activeUser?.role === 'admin'
+                  ? 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
+                  : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-300 text-indigo-900'
+              }`}
+              title={activeUser?.role === 'admin' ? "Manage Users & Architect Teams" : "Manage My Team (FAs & LAs)"}
             >
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-700 shrink-0" />
-              <span className="hidden sm:inline font-bold">Architects</span>
+              <User className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${activeUser?.role === 'admin' ? 'text-amber-700' : 'text-indigo-700'}`} />
+              <span className="hidden sm:inline font-bold">
+                {activeUser?.role === 'admin' ? 'Team & Users' : 'My Team'}
+              </span>
               <span className="sm:hidden text-xs">👥</span>
             </button>
           )}
@@ -147,13 +153,23 @@ export default function Header({
                 className={`flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl border text-xs shrink-0 transition-colors ${
                   activeUser.role === 'admin'
                     ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+                    : activeUser.role === 'bh'
+                    ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+                    : activeUser.role === 'la'
+                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
                     : 'bg-sky-50/80 border-sky-200 text-sky-950'
                 }`}
-                title={`${activeUser.name || activeUser.username} (${activeUser.role === 'admin' ? 'Administrator' : 'Feasibility Architect'})`}
+                title={`${activeUser.name || activeUser.username} (${activeUser.title || activeUser.role})`}
               >
                 {/* Avatar Initials */}
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 text-white shadow-2xs ${
-                  activeUser.role === 'admin' ? 'bg-amber-600' : 'bg-sky-600'
+                  activeUser.role === 'admin' 
+                    ? 'bg-amber-600' 
+                    : activeUser.role === 'bh'
+                    ? 'bg-indigo-600'
+                    : activeUser.role === 'la'
+                    ? 'bg-emerald-600'
+                    : 'bg-sky-600'
                 }`}>
                   {(activeUser.name || activeUser.username || 'U').charAt(0).toUpperCase()}
                 </div>
@@ -164,7 +180,13 @@ export default function Header({
                     {activeUser.name || activeUser.username}
                   </span>
                   <span className="text-[9px] uppercase font-semibold text-slate-500 block leading-tight truncate">
-                    {activeUser.role === 'admin' ? 'Administrator' : 'Architect'}
+                    {activeUser.role === 'admin'
+                      ? 'Administrator'
+                      : activeUser.role === 'bh'
+                      ? 'Business Head'
+                      : activeUser.role === 'la'
+                      ? 'Lead Architect'
+                      : 'Feasibility Architect'}
                   </span>
                 </div>
               </div>

@@ -98,16 +98,16 @@ const fallbackVariants = [
 ];
 
 const DEFAULT_CLIENT_INFO = {
-  name: 'Dr. Siddharth & Meera Menon',
-  contact: '98401 23456',
-  location: 'Skyline Waterfront Penthouse, ECR',
-  date: new Date().toLocaleDateString('en-GB')
+  name: '',
+  contact: '',
+  location: '',
+  date: ''
 };
 
 const DEFAULT_REP_INFO = {
-  name: 'Mr. Abishek',
-  contact: '93611 84787',
-  email: 'designs.cookscape@gmail.com'
+  name: '',
+  contact: '',
+  email: ''
 };
 
 const DEFAULT_VARIANT_IDS = [
@@ -118,7 +118,7 @@ const DEFAULT_VARIANT_IDS = [
 const DEFAULT_UNIT_PAGES = [
   {
     id: 'unit-1',
-    title: 'Unit 1 - Modular Kitchen',
+    title: '',
     category: 'Modular Kitchen',
     notes: '',
     file: null,
@@ -129,7 +129,7 @@ const DEFAULT_UNIT_PAGES = [
 const DEFAULT_ACCESSORY_PAGES = [
   {
     id: 'acc-1',
-    title: 'Accessory Page 1 - Kitchen Hardware & Baskets',
+    title: '',
     category: 'Kitchen Hardware & Baskets',
     notes: '',
     file: null,
@@ -163,8 +163,23 @@ export default function App() {
   const [pdfPreview, setPdfPreview] = useState({ isOpen: false, url: '', title: '' });
 
   // Form State initialized from autosaved draft!
-  const [clientInfo, setClientInfo] = useState(() => initialDraft?.clientInfo || DEFAULT_CLIENT_INFO);
-  const [repInfo, setRepInfo] = useState(() => initialDraft?.repInfo || DEFAULT_REP_INFO);
+  // Sanitize legacy draft values if they contain the old hardcoded sample data
+  const [clientInfo, setClientInfo] = useState(() => {
+    const draft = initialDraft?.clientInfo;
+    if (draft && (draft.name === 'Dr. Siddharth & Meera Menon' || draft.name === 'Sample Client')) {
+      return DEFAULT_CLIENT_INFO;
+    }
+    return draft || DEFAULT_CLIENT_INFO;
+  });
+
+  const [repInfo, setRepInfo] = useState(() => {
+    const draft = initialDraft?.repInfo;
+    if (draft && (draft.name === 'Mr. Abishek' || draft.name === 'Cookscape Representative')) {
+      return DEFAULT_REP_INFO;
+    }
+    return draft || DEFAULT_REP_INFO;
+  });
+
   const [selectedVariantIds, setSelectedVariantIds] = useState(() => initialDraft?.selectedVariantIds || DEFAULT_VARIANT_IDS);
   const [snipFiles, setSnipFiles] = useState(() => initialDraft?.snipFiles || {});
   const [unitPages, setUnitPages] = useState(() => (initialDraft?.unitPages && initialDraft.unitPages.length > 0) ? initialDraft.unitPages : DEFAULT_UNIT_PAGES);
@@ -277,8 +292,8 @@ export default function App() {
       setRepInfo(prev => {
         if (prev?.name && prev.name !== DEFAULT_REP_INFO.name) return prev;
         return {
-          name: activeUser.name || activeUser.username,
-          contact: activeUser.contactNumber || activeUser.contact || 'N/A',
+          name: activeUser.name || activeUser.username || '',
+          contact: activeUser.contactNumber || activeUser.contact || '',
           email: activeUser.email || ''
         };
       });

@@ -31,7 +31,26 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
     });
   };
 
-  const isValid = clientInfo.name && clientInfo.contact && clientInfo.location;
+  const clearFields = () => {
+    setClientInfo({
+      name: '',
+      contact: '',
+      location: '',
+      date: ''
+    });
+    setRepInfo({
+      name: '',
+      contact: '',
+      email: ''
+    });
+  };
+
+  const isValid = Boolean(clientInfo.name && clientInfo.name.trim());
+
+  const hasAnyValues = Boolean(
+    clientInfo.name || clientInfo.contact || clientInfo.location || clientInfo.date ||
+    repInfo.name || repInfo.contact || repInfo.email
+  );
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -49,6 +68,15 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {hasAnyValues && (
+            <button
+              type="button"
+              onClick={clearFields}
+              className="px-3.5 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-xs font-semibold text-rose-700 transition-colors cursor-pointer"
+            >
+              Clear All Fields
+            </button>
+          )}
           <button
             type="button"
             onClick={loadTemplateDefaults}
@@ -87,7 +115,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Dr. Siddharth Menon / Sample Client"
+                  placeholder="e.g. Dr. Siddharth Menon"
                   value={clientInfo.name || ''}
                   onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
                 />
@@ -97,7 +125,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="form-label">Contact Number *</label>
+                <label className="form-label">Contact Number</label>
                 <div className="relative">
                   <input
                     type="text"
@@ -116,7 +144,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                   <input
                     type="text"
                     className="form-input pl-11"
-                    placeholder="e.g. 10/10/2026"
+                    placeholder={`e.g. ${new Date().toLocaleDateString('en-GB')}`}
                     value={clientInfo.date || ''}
                     onChange={(e) => setClientInfo({ ...clientInfo, date: e.target.value })}
                   />
@@ -126,12 +154,12 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
             </div>
 
             <div>
-              <label className="form-label">Site / Property Location *</label>
+              <label className="form-label">Site / Property Location</label>
               <div className="relative">
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Skyline Penthouse / Prestige Falcon City"
+                  placeholder="e.g. Skyline Waterfront Penthouse, ECR"
                   value={clientInfo.location || ''}
                   onChange={(e) => setClientInfo({ ...clientInfo, location: e.target.value })}
                 />
@@ -156,12 +184,12 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
 
           <div className="space-y-4">
             <div>
-              <label className="form-label">Designer / Rep Name *</label>
+              <label className="form-label">Designer / Rep Name</label>
               <div className="relative">
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. Karthik Ramanathan / Sales Rep"
+                  placeholder="e.g. Mr. Abishek / Karthik Ramanathan"
                   value={repInfo.name || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, name: e.target.value })}
                 />
@@ -175,7 +203,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="text"
                   className="form-input pl-11"
-                  placeholder="e.g. 94444 88888"
+                  placeholder="e.g. 93611 84787"
                   value={repInfo.contact || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, contact: e.target.value })}
                 />
@@ -189,7 +217,7 @@ export default function StepClientRep({ clientInfo, setClientInfo, repInfo, setR
                 <input
                   type="email"
                   className="form-input pl-11"
-                  placeholder="e.g. karthik@cookscape.in"
+                  placeholder="e.g. designs.cookscape@gmail.com"
                   value={repInfo.email || ''}
                   onChange={(e) => setRepInfo({ ...repInfo, email: e.target.value })}
                 />

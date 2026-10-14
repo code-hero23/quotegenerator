@@ -93,15 +93,15 @@ export default function StepReviewGenerate({
           <div className="space-y-3 text-sm">
             <div>
               <span className="text-xs uppercase text-slate-500 font-bold block">Client Name</span>
-              <p className="text-slate-900 font-semibold">{clientInfo.name}</p>
+              <p className="text-slate-900 font-semibold">{clientInfo.name || 'Not Specified'}</p>
             </div>
             <div>
               <span className="text-xs uppercase text-slate-500 font-bold block">Contact Number</span>
-              <p className="text-slate-700 font-mono">{clientInfo.contact}</p>
+              <p className="text-slate-700 font-mono">{clientInfo.contact || 'Not Specified'}</p>
             </div>
             <div>
               <span className="text-xs uppercase text-slate-500 font-bold block">Site Location</span>
-              <p className="text-slate-700">{clientInfo.location}</p>
+              <p className="text-slate-700">{clientInfo.location || 'Not Specified'}</p>
             </div>
             <div>
               <span className="text-xs uppercase text-slate-500 font-bold block">Quotation Date</span>
@@ -111,7 +111,11 @@ export default function StepReviewGenerate({
             <div className="pt-3 border-t border-slate-200">
               <span className="text-xs uppercase text-amber-700 font-bold block">Sales Rep / Designer</span>
               <p className="text-slate-900 font-semibold">{repInfo.name || 'Cookscape Design Team'}</p>
-              <p className="text-xs text-slate-600">{repInfo.contact} • {repInfo.email}</p>
+              <p className="text-xs text-slate-600">
+                {(repInfo.contact || repInfo.email)
+                  ? `${repInfo.contact || ''}${repInfo.contact && repInfo.email ? ' • ' : ''}${repInfo.email || ''}`
+                  : 'Design Team'}
+              </p>
             </div>
           </div>
         </div>

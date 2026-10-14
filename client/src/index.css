@@ -140,6 +140,53 @@
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+/* Light Color Font Placeholders across all inputs & textareas */
+::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+}
+
+::-webkit-input-placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+}
+
+:-moz-placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+}
+
+::-moz-placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+}
+
+:-ms-input-placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+}
+
+.form-input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8 !important;
+  font-weight: 300 !important;
+  opacity: 0.85 !important;
+  letter-spacing: 0.01em;
+}
+
+.form-input:focus::placeholder,
+input:focus::placeholder,
+textarea:focus::placeholder {
+  color: #cbd5e1 !important;
+  opacity: 0.7 !important;
+}
+
 .form-label {
   display: block;
   font-size: 0.8rem;

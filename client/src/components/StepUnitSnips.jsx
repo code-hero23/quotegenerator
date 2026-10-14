@@ -52,7 +52,7 @@ export default function StepUnitSnips({
     const newPage = {
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       variantId: targetVariantId,
-      title: `Unit ${newIndex} - ${defaultCategory}`,
+      title: '',
       category: defaultCategory,
       notes: '',
       file: null,
@@ -83,7 +83,7 @@ export default function StepUnitSnips({
       setUnitPages([{
         id: `unit_${Date.now()}`,
         variantId: 'all',
-        title: 'Unit 1 - Modular Kitchen',
+        title: '',
         category: 'Modular Kitchen',
         notes: '',
         file: null,
@@ -334,9 +334,9 @@ export default function StepUnitSnips({
                   <div className="flex-1 min-w-0">
                     <input
                       type="text"
-                      value={page.title}
+                      value={page.title || ''}
                       onChange={(e) => handleUpdatePage(page.id, 'title', e.target.value)}
-                      placeholder={`e.g. Unit ${index + 1} - Kitchen Breakdown`}
+                      placeholder={`e.g. Unit ${index + 1} - ${page.category || 'Breakdown'}`}
                       className="text-base font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-amber-500 focus:outline-none w-full py-0.5 transition-colors truncate"
                     />
                   </div>

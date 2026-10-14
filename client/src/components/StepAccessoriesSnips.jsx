@@ -50,7 +50,7 @@ export default function StepAccessoriesSnips({
     const defaultCategory = ACCESSORY_CATEGORIES[(newIndex - 1) % ACCESSORY_CATEGORIES.length] || 'Kitchen Hardware & Baskets';
     const newPage = {
       id: `acc_${Date.now()}_${Math.random().toString(36).substring(5)}`,
-      title: `Accessory Page ${newIndex} - ${defaultCategory}`,
+      title: '',
       category: defaultCategory,
       notes: '',
       file: null,
@@ -65,7 +65,7 @@ export default function StepAccessoriesSnips({
     if (accessoryPages.length <= 1) {
       setAccessoryPages([{
         id: `acc_${Date.now()}`,
-        title: 'Accessory Page 1 - Kitchen Hardware & Baskets',
+        title: '',
         category: 'Kitchen Hardware & Baskets',
         notes: '',
         file: null,
@@ -320,9 +320,9 @@ export default function StepAccessoriesSnips({
                 </label>
                 <input
                   type="text"
-                  value={currentPage.title}
+                  value={currentPage.title || ''}
                   onChange={(e) => handleUpdatePage(currentPage.id, 'title', e.target.value)}
-                  placeholder={`e.g. Accessory Page ${safeIndex + 1} - Kitchen Tandem Boxes`}
+                  placeholder={`e.g. Accessory Page ${safeIndex + 1} - ${currentPage.category || 'Hardware'}`}
                   className="text-lg font-bold text-slate-900 bg-transparent border-b border-slate-200 hover:border-slate-400 focus:border-amber-500 focus:outline-none w-full py-0.5 transition-colors font-['Outfit']"
                 />
               </div>
@@ -541,8 +541,9 @@ export default function StepAccessoriesSnips({
                   </span>
                   <input
                     type="text"
-                    value={page.title}
+                    value={page.title || ''}
                     onChange={(e) => handleUpdatePage(page.id, 'title', e.target.value)}
+                    placeholder={`e.g. Accessory Page ${index + 1} - ${page.category || 'Hardware'}`}
                     className="text-base font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-amber-500 focus:outline-none w-full py-0.5 font-['Outfit']"
                   />
                 </div>

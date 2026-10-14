@@ -114,6 +114,26 @@
       "updatedAt": "2026-10-14T11:05:28.622Z"
     },
     {
+      "id": "user-arch-abirami",
+      "username": "abirami",
+      "password": "arch123",
+      "name": "Abirami.K",
+      "contactNumber": "94444 88888",
+      "email": "abirami@cookscape.in",
+      "role": "architect",
+      "title": "Feasibility Architect"
+    },
+    {
+      "id": "user-sales-rep-1",
+      "username": "abishek",
+      "password": "arch123",
+      "name": "Mr. Abishek",
+      "contactNumber": "93611 84787",
+      "email": "designs.cookscape@gmail.com",
+      "role": "architect",
+      "title": "Feasibility Architect"
+    },
+    {
       "id": "user-arch-aravindan",
       "username": "aravindan",
       "password": "arch123",

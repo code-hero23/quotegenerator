@@ -107,6 +107,16 @@ const defaultUsers = [
     title: 'Feasibility Architect'
   },
   {
+    id: 'user-arch-abirami',
+    username: 'abirami',
+    password: 'arch123',
+    name: 'Abirami.K',
+    contactNumber: '94444 88888',
+    email: 'abirami@cookscape.in',
+    role: 'architect',
+    title: 'Feasibility Architect'
+  },
+  {
     id: 'user-arch-aravindan',
     username: 'aravindan',
     password: 'arch123',

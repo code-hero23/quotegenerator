@@ -137,6 +137,47 @@ const DEFAULT_ACCESSORY_PAGES = [
   }
 ];
 
+function getQuotationSignature(payload) {
+  if (!payload) return '';
+  return JSON.stringify({
+    clientInfo: payload.clientInfo,
+    repInfo: payload.repInfo,
+    selectedVariantIds: payload.selectedVariantIds,
+    unitPages: (payload.unitPages || []).map(p => ({
+      id: p.id,
+      variantId: p.variantId,
+      title: p.title,
+      category: p.category,
+      notes: p.notes,
+      fileName: p.file?.name,
+      fileSize: p.file?.size,
+      previewUrl: p.previewUrl,
+      filePath: p.filePath
+    })),
+    accessoryPages: (payload.accessoryPages || []).map(a => ({
+      id: a.id,
+      title: a.title,
+      category: a.category,
+      notes: a.notes,
+      fileName: a.file?.name,
+      fileSize: a.file?.size,
+      previewUrl: a.previewUrl,
+      filePath: a.filePath
+    })),
+    snipFiles: Object.entries(payload.snipFiles || {}).reduce((acc, [vid, list]) => {
+      acc[vid] = (Array.isArray(list) ? list : [list]).map(item => ({
+        id: item?.id,
+        title: item?.title,
+        fileName: item?.file?.name,
+        fileSize: item?.file?.size,
+        previewUrl: item?.previewUrl,
+        filePath: item?.filePath
+      }));
+      return acc;
+    }, {})
+  });
+}
+
 export default function App() {
   // PWA Support (Installation & Offline Status)
   const { isInstallable, isInstalled, isOnline, promptInstall } = usePwa();
@@ -200,6 +241,8 @@ export default function App() {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState(null);
+  const [lastGeneratedSnapshot, setLastGeneratedSnapshot] = useState(null);
+  const [parentQuotation, setParentQuotation] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
   const [isUserManagementOpen, setIsUserManagementOpen] = useState(false);
@@ -260,6 +303,9 @@ export default function App() {
     setUnitPages(DEFAULT_UNIT_PAGES);
     setAccessoryPages(DEFAULT_ACCESSORY_PAGES);
     setSnipFiles({});
+    setGenerationResult(null);
+    setLastGeneratedSnapshot(null);
+    setParentQuotation(null);
     setCurrentStep(1);
     setDraftBannerDismissed(true);
     markAsSaved({
@@ -284,6 +330,14 @@ export default function App() {
     accessoryPages,
     snipFiles
   }), [currentStep, clientInfo, repInfo, selectedVariantIds, unitPages, accessoryPages, snipFiles]);
+
+  // Track whether any fields have changed since quotation was generated
+  const currentSignature = useMemo(() => getQuotationSignature(currentDraftPayload), [currentDraftPayload]);
+
+  const hasChangesSinceGeneration = useMemo(() => {
+    if (!lastGeneratedSnapshot) return false;
+    return currentSignature !== lastGeneratedSnapshot;
+  }, [currentSignature, lastGeneratedSnapshot]);
 
   // Comprehensive autosave: triggers on edit (300ms debounce), tab switch, window blur, tab close, or 5s timer
   const { saveStatus, lastSavedAt, saveNow, markAsSaved } = useAutosave({
@@ -474,12 +528,32 @@ export default function App() {
       setSnipFiles(restoredSnips);
     }
 
-    // Reset generation state & navigate to Step 1
+    // Reset generation state & set up for re-compilation
     setGenerationResult(null);
+    setParentQuotation({
+      quotationNumber: quote.quotationNumber,
+      id: quote.id
+    });
+    setLastGeneratedSnapshot(getQuotationSignature({
+      clientInfo: {
+        name: c.name || '',
+        contact: c.contactNumber || c.contact || '',
+        location: c.location || '',
+        email: c.email || '',
+        date: c.date || (quote.date ? new Date(quote.date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'))
+      },
+      repInfo: quote.repInfo || DEFAULT_REP_INFO,
+      selectedVariantIds: (quote.selectedVariantIds && quote.selectedVariantIds.length > 0)
+        ? quote.selectedVariantIds
+        : (quote.selectedVariants ? quote.selectedVariants.map(v => (typeof v === 'string' ? v : v.id)).filter(Boolean) : DEFAULT_VARIANT_IDS),
+      unitPages: quote.unitPagesMetadata || DEFAULT_UNIT_PAGES,
+      accessoryPages: quote.accessoryPagesMetadata || DEFAULT_ACCESSORY_PAGES,
+      snipFiles: restoredSnips
+    }));
     setCurrentStep(1);
     setIsHistoryOpen(false);
 
-    showToast(`Quotation ${quote.quotationNumber} loaded for editing! Adjust details or snips and compile.`);
+    showToast(`Quotation ${quote.quotationNumber} loaded for editing! Adjust details or snips and compile the new version.`);
   };
 
   // Admin delete quote
@@ -605,6 +679,11 @@ export default function App() {
       if (response.data && response.data.success) {
         const data = response.data.data;
         setGenerationResult(data);
+        setParentQuotation({
+          quotationNumber: data.quotationNumber,
+          id: data.quotationId
+        });
+        setLastGeneratedSnapshot(getQuotationSignature(currentDraftPayload));
 
         // Auto trigger browser download of the PPTX presentation
         const pptxUrl = data.pptxDownloadUrl || data.downloadUrl;
@@ -618,6 +697,7 @@ export default function App() {
         fetchQuotations(activeUser);
         clearAllDrafts();
 
+        showToast(`Quotation ${data.quotationNumber} compiled successfully with your latest changes!`);
         return { success: true };
       } else {
         throw new Error(response.data.error || 'Failed to compile quotation.');
@@ -642,9 +722,7 @@ export default function App() {
   };
 
   const handleReset = () => {
-    setGenerationResult(null);
-    setCurrentStep(1);
-    clearAllDrafts();
+    handleStartFresh();
   };
 
   // If not logged in, render LoginPage
@@ -822,6 +900,9 @@ export default function App() {
             generationResult={generationResult}
             onReset={handleReset}
             onPreviewPdf={(url, title) => setPdfPreview({ isOpen: true, url, title })}
+            hasChangesSinceGeneration={hasChangesSinceGeneration}
+            parentQuotationNumber={parentQuotation?.quotationNumber}
+            onEditStep={(step) => setCurrentStep(step)}
           />
         )}
 

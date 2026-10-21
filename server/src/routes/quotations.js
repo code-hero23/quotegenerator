@@ -138,6 +138,9 @@ router.get('/view/:filename', async (req, res) => {
       return res.status(404).json({ success: false, error: 'File not found' });
     }
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${path.basename(filePath)}"`);
     fs.createReadStream(filePath).pipe(res);
@@ -223,6 +226,9 @@ router.get('/download/:filename', async (req, res) => {
     const isInline = req.query.view === '1' || req.query.view === 'true';
     const disposition = isInline ? 'inline' : 'attachment';
 
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Content-Disposition', `${disposition}; filename="${actualName}"`);
     res.setHeader('Content-Type', contentType);
     fs.createReadStream(filePath).pipe(res);
@@ -308,129 +314,143 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       quotationPagesMetadata = {};
     }
 
+    // Organize uploaded files by field name for exact index lookup
+    const uploadedFilesByField = {};
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        // Check if unit snip
-        const unitMatch = file.fieldname.match(/^unit_snip_(.+)$/);
-        if (unitMatch) {
-          const unitId = unitMatch[1];
-          const meta = unitPagesMetadata.find(m => String(m.id) === String(unitId)) || {};
+        uploadedFilesByField[file.fieldname] = file;
+      }
+    }
+
+    // Map unitSnips strictly preserving unitPagesMetadata order
+    if (unitPagesMetadata.length > 0) {
+      unitPagesMetadata.forEach(meta => {
+        const fileKey = `unit_snip_${meta.id}`;
+        let filePath = null;
+
+        if (uploadedFilesByField[fileKey]) {
+          filePath = uploadedFilesByField[fileKey].path;
+        } else {
+          // Check if existing file path is valid on this machine
+          if (meta.filePath && fs.existsSync(meta.filePath)) {
+            filePath = meta.filePath;
+          } else {
+            const rawRef = meta.previewUrl || meta.filePath;
+            if (rawRef) {
+              const basename = path.basename(rawRef);
+              const candidate = path.resolve(snipsDir, basename);
+              if (fs.existsSync(candidate)) filePath = candidate;
+            }
+          }
+        }
+
+        if (filePath && fs.existsSync(filePath)) {
           unitSnips.push({
-            id: unitId,
+            id: meta.id,
             variantId: meta.variantId || 'all',
             title: meta.title || 'Unit Breakdown',
             category: meta.category || 'Unit Specification',
             notes: meta.notes || '',
-            filePath: file.path
+            filePath
           });
-          continue;
+        }
+      });
+    }
+
+    // Map accessorySnips strictly preserving accessoryPagesMetadata order
+    if (accessoryPagesMetadata.length > 0) {
+      accessoryPagesMetadata.forEach(meta => {
+        const fileKey = `accessory_snip_${meta.id}`;
+        let filePath = null;
+
+        if (uploadedFilesByField[fileKey]) {
+          filePath = uploadedFilesByField[fileKey].path;
+        } else {
+          if (meta.filePath && fs.existsSync(meta.filePath)) {
+            filePath = meta.filePath;
+          } else {
+            const rawRef = meta.previewUrl || meta.filePath;
+            if (rawRef) {
+              const basename = path.basename(rawRef);
+              const candidate = path.resolve(snipsDir, basename);
+              if (fs.existsSync(candidate)) filePath = candidate;
+            }
+          }
         }
 
-        // Check if accessory snip
-        const accMatch = file.fieldname.match(/^accessory_snip_(.+)$/);
-        if (accMatch) {
-          const accId = accMatch[1];
-          const meta = accessoryPagesMetadata.find(m => String(m.id) === String(accId)) || {};
+        if (filePath && fs.existsSync(filePath)) {
           accessorySnips.push({
-            id: accId,
+            id: meta.id,
             title: meta.title || 'Accessories & Hardware',
             category: meta.category || 'Hardware Specifications',
             notes: meta.notes || '',
-            filePath: file.path
+            filePath
           });
-          continue;
         }
+      });
+    }
 
-        const match = file.fieldname.match(/^snip_(.+)$/);
-        if (match) {
-          const rawId = match[1];
-          let matchedVid = selectedVariantIds.find(vid => rawId === vid || rawId.startsWith(`${vid}_`));
-          const targetVid = matchedVid || rawId.replace(/_\d+$/, '');
+    // Map variant quotation snips preserving exact page order
+    let parsedExistingSnips = {};
+    if (body.existingSnips) {
+      try {
+        parsedExistingSnips = typeof body.existingSnips === 'string' ? JSON.parse(body.existingSnips) : body.existingSnips;
+      } catch (e) {
+        console.warn('Could not parse existingSnips:', e.message);
+      }
+    }
 
-          if (!snips[targetVid]) {
-            snips[targetVid] = [];
-          } else if (!Array.isArray(snips[targetVid])) {
-            snips[targetVid] = [snips[targetVid]];
+    for (const vid of selectedVariantIds) {
+      snips[vid] = [];
+      const vMeta = quotationPagesMetadata?.[vid];
+
+      if (Array.isArray(vMeta) && vMeta.length > 0) {
+        // Ordered pages according to quotationPagesMetadata
+        vMeta.forEach((pageMeta, idx) => {
+          let foundPath = null;
+          // 1. Check direct fieldname `snip_${vid}_${idx}`
+          const directFile = uploadedFilesByField[`snip_${vid}_${idx}`] || uploadedFilesByField[`snip_${vid}_page_${idx}`];
+          if (directFile) {
+            foundPath = directFile.path;
+          } else {
+            // 2. Check existing previewUrl / filePath
+            const rawRef = pageMeta.previewUrl || pageMeta.filePath;
+            if (rawRef) {
+              if (pageMeta.filePath && fs.existsSync(pageMeta.filePath)) {
+                foundPath = pageMeta.filePath;
+              } else {
+                const basename = path.basename(rawRef);
+                const candidate = path.resolve(snipsDir, basename);
+                if (fs.existsSync(candidate)) foundPath = candidate;
+              }
+            }
           }
-          snips[targetVid].push(file.path);
-        } else {
-          for (const vid of selectedVariantIds) {
-            if (file.originalname.includes(vid) || file.fieldname.includes(vid)) {
-              if (!snips[vid]) snips[vid] = [];
-              else if (!Array.isArray(snips[vid])) snips[vid] = [snips[vid]];
+          if (foundPath && fs.existsSync(foundPath)) {
+            snips[vid].push(foundPath);
+          }
+        });
+      }
+
+      // Fallback: If nothing added from metadata, fall back to uploaded files or existingSnips list
+      if (snips[vid].length === 0) {
+        if (req.files && req.files.length > 0) {
+          for (const file of req.files) {
+            if (file.fieldname.startsWith(`snip_${vid}`)) {
               snips[vid].push(file.path);
             }
           }
         }
-      }
-    }
-
-    // Support preserving existing files when re-editing quotes
-    if (unitPagesMetadata.length > 0) {
-      unitPagesMetadata.forEach(meta => {
-        if (!unitSnips.some(u => String(u.id) === String(meta.id))) {
-          let existingPath = meta.filePath;
-          if (!existingPath && meta.previewUrl && meta.previewUrl.includes('/uploads/snips/')) {
-            const basename = path.basename(meta.previewUrl);
-            const candidate = path.resolve(snipsDir, basename);
-            if (fs.existsSync(candidate)) existingPath = candidate;
-          }
-          if (existingPath && fs.existsSync(existingPath)) {
-            unitSnips.push({
-              id: meta.id,
-              variantId: meta.variantId || 'all',
-              title: meta.title || 'Unit Breakdown',
-              category: meta.category || 'Unit Specification',
-              notes: meta.notes || '',
-              filePath: existingPath
-            });
-          }
+        if (snips[vid].length === 0 && parsedExistingSnips[vid]) {
+          const list = Array.isArray(parsedExistingSnips[vid]) ? parsedExistingSnips[vid] : [parsedExistingSnips[vid]];
+          list.forEach(item => {
+            const rawRef = typeof item === 'string' ? item : (item.previewUrl || item.filePath);
+            if (rawRef) {
+              const basename = path.basename(rawRef);
+              const candidate = path.resolve(snipsDir, basename);
+              if (fs.existsSync(candidate)) snips[vid].push(candidate);
+            }
+          });
         }
-      });
-    }
-
-    if (accessoryPagesMetadata.length > 0) {
-      accessoryPagesMetadata.forEach(meta => {
-        if (!accessorySnips.some(a => String(a.id) === String(meta.id))) {
-          let existingPath = meta.filePath;
-          if (!existingPath && meta.previewUrl && meta.previewUrl.includes('/uploads/snips/')) {
-            const basename = path.basename(meta.previewUrl);
-            const candidate = path.resolve(snipsDir, basename);
-            if (fs.existsSync(candidate)) existingPath = candidate;
-          }
-          if (existingPath && fs.existsSync(existingPath)) {
-            accessorySnips.push({
-              id: meta.id,
-              title: meta.title || 'Accessories & Hardware',
-              category: meta.category || 'Hardware Specifications',
-              notes: meta.notes || '',
-              filePath: existingPath
-            });
-          }
-        }
-      });
-    }
-
-    if (body.existingSnips) {
-      try {
-        const existingSnips = typeof body.existingSnips === 'string' ? JSON.parse(body.existingSnips) : body.existingSnips;
-        Object.entries(existingSnips).forEach(([vid, list]) => {
-          if (!snips[vid] || snips[vid].length === 0) {
-            const files = Array.isArray(list) ? list : [list];
-            files.forEach(item => {
-              const previewUrl = typeof item === 'string' ? item : (item.previewUrl || item.filePath);
-              if (previewUrl) {
-                const candidate = path.resolve(snipsDir, path.basename(previewUrl));
-                if (fs.existsSync(candidate)) {
-                  if (!snips[vid]) snips[vid] = [];
-                  snips[vid].push(candidate);
-                }
-              }
-            });
-          }
-        });
-      } catch (e) {
-        console.warn('Could not parse existingSnips:', e.message);
       }
     }
 

@@ -711,7 +711,7 @@ class PptxEngine {
       // If Cover Slide (slide 1), apply all client & rep tag replacements
       if (slide.displayIndex === 1) {
         for (const item of coverReplacements) {
-          if (item.replace) {
+          if (item.replace !== undefined && item.replace !== null) {
             slideXml = slideXml.replace(item.search, item.replace);
           }
         }

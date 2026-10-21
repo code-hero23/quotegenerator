@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Download, ArrowLeft, Cpu, CheckCircle2, 
-  Layers, User, Sparkles, Loader2, FileText, Eye, Maximize2, PlusCircle 
+  Layers, User, Sparkles, Loader2, FileText, Eye, Maximize2, PlusCircle,
+  RefreshCw, Edit3
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -18,10 +19,16 @@ export default function StepReviewGenerate({
   isGenerating,
   generationResult,
   onReset,
-  onPreviewPdf
+  onPreviewPdf,
+  hasChangesSinceGeneration = false,
+  parentQuotationNumber = null,
+  onEditStep
 }) {
   const [engineType, setEngineType] = useState('node');
   const [showEmbeddedPdf, setShowEmbeddedPdf] = useState(true);
+  const [showPreviousResult, setShowPreviousResult] = useState(false);
+
+  const showSuccessCard = Boolean(generationResult && !hasChangesSinceGeneration);
 
   const selectedVariants = variants.filter(v => selectedVariantIds.includes(v.id));
   const unselectedVariants = variants.filter(v => !selectedVariantIds.includes(v.id));
@@ -76,6 +83,8 @@ export default function StepReviewGenerate({
   const pdfViewUrl = generationResult 
     ? (generationResult.pdfViewUrl || (pdfDownloadUrl ? pdfDownloadUrl.replace('/download/', '/view/') : null))
     : null;
+
+  const livePdfViewUrl = pdfViewUrl ? `${pdfViewUrl}?t=${generationResult?.durationMs || Date.now()}` : null;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -275,8 +284,51 @@ export default function StepReviewGenerate({
 
       </div>
 
+      {/* Changes Detected Alert Banner */}
+      {hasChangesSinceGeneration && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 text-amber-950 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-sm shadow-amber-500/30">
+              <RefreshCw className="w-5 h-5 animate-spin-slow" />
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                <span>Quotation Details Modified</span>
+                {parentQuotationNumber && (
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 font-bold">
+                    Previous: {parentQuotationNumber}
+                  </span>
+                )}
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5">
+                You made changes to client details or specifications. Click below to compile your new quotation revision!
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleStartGeneration}
+            disabled={isGenerating}
+            className="btn-gold text-xs sm:text-sm px-5 py-2.5 shrink-0 shadow-md shadow-amber-500/20 flex items-center gap-2 cursor-pointer w-full md:w-auto justify-center"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Compiling New Version...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                <span>Compile New Quotation</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Generation Result Success Card */}
-      {generationResult ? (
+      {showSuccessCard ? (
         <div className="glass-panel p-6 sm:p-8 border-2 border-emerald-400 bg-emerald-50/40 space-y-6 text-center animate-fadeIn shadow-lg">
           <div className="w-16 h-16 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-700 mx-auto flex items-center justify-center">
             <CheckCircle2 className="w-9 h-9" />
@@ -316,10 +368,10 @@ export default function StepReviewGenerate({
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 w-full">
             
             {/* View PDF Button */}
-            {pdfViewUrl && (
+            {livePdfViewUrl && (
               <button
                 type="button"
-                onClick={() => onPreviewPdf && onPreviewPdf(pdfViewUrl, `${clientInfo.name} Quotation PDF`)}
+                onClick={() => onPreviewPdf && onPreviewPdf(livePdfViewUrl, `${clientInfo.name} Quotation PDF (${generationResult.quotationNumber})`)}
                 className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-cyan-600/20 transition-all hover:-translate-y-0.5 cursor-pointer"
               >
                 <Eye className="w-4 h-4" />
@@ -350,16 +402,16 @@ export default function StepReviewGenerate({
           </div>
 
           {/* EMBEDDED LIVE PDF PREVIEW */}
-          {pdfViewUrl && (
+          {livePdfViewUrl && (
             <div className="mt-6 border border-slate-200 rounded-2xl overflow-hidden bg-white text-left shadow-md">
               <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-800 flex items-center gap-2 truncate">
                   <FileText className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span className="truncate">Live PDF Document Preview</span>
+                  <span className="truncate">Live PDF Document Preview — {generationResult.quotationNumber}</span>
                 </span>
                 <div className="flex items-center space-x-2 shrink-0">
                   <a
-                    href={pdfViewUrl}
+                    href={livePdfViewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-slate-600 hover:text-slate-900 flex items-center gap-1 text-[11px] px-2.5 py-1 rounded bg-white border border-slate-200 font-semibold"
@@ -380,7 +432,7 @@ export default function StepReviewGenerate({
               {showEmbeddedPdf && (
                 <div className="w-full h-[380px] sm:h-[550px] bg-slate-100">
                   <iframe
-                    src={pdfViewUrl}
+                    src={livePdfViewUrl}
                     title="Live Quotation PDF Preview"
                     className="w-full h-full border-none"
                   />
@@ -389,23 +441,50 @@ export default function StepReviewGenerate({
             </div>
           )}
 
-          <div className="pt-6 pb-2 flex justify-center w-full">
+          {/* ACTIONS: MAKE CHANGES / RE-COMPILE / FRESH QUOTE */}
+          <div className="pt-6 border-t border-emerald-200/70 flex flex-wrap items-center justify-center gap-3 w-full">
+            <button
+              type="button"
+              onClick={() => onEditStep ? onEditStep(1) : onBack()}
+              className="px-5 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+              title="Return to Step 1 to modify client or quotation details"
+            >
+              <Edit3 className="w-4 h-4 text-amber-600" />
+              <span>✏️ Modify / Edit Quotation</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStartGeneration}
+              disabled={isGenerating}
+              className="px-5 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+              title="Re-generate quotation file"
+            >
+              <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+              <span>🔄 Re-compile Quotation</span>
+            </button>
+
             <button
               type="button"
               onClick={onReset}
-              className="w-full sm:w-auto px-10 py-4.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-white text-base md:text-lg font-bold shadow-xl shadow-amber-500/30 hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3.5 cursor-pointer border border-amber-400/40"
+              className="px-5 py-3 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-slate-600 hover:text-rose-700 text-xs font-bold flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+              title="Clear draft and start a completely new quotation"
             >
-              <PlusCircle className="w-6 h-6 text-white" />
-              <span>Create Another Quotation</span>
+              <PlusCircle className="w-4 h-4 text-slate-400" />
+              <span>Start Fresh Quotation</span>
             </button>
           </div>
         </div>
       ) : (
         <div className="glass-panel p-5 sm:p-8 flex flex-col items-center justify-center text-center space-y-6">
           <div className="max-w-md">
-            <h3 className="text-xl font-bold text-slate-900">Ready to Compile Presentation & PDF</h3>
+            <h3 className="text-xl font-bold text-slate-900">
+              {hasChangesSinceGeneration ? 'Ready to Compile Updated Quotation' : 'Ready to Compile Presentation & PDF'}
+            </h3>
             <p className="text-sm text-slate-600 mt-1">
-              Your customized quotation will be generated in both <strong>PowerPoint (.pptx)</strong> and <strong>PDF (.pdf)</strong> formats simultaneously.
+              {hasChangesSinceGeneration
+                ? `Your updated client details and specifications will be compiled into a brand new PowerPoint (.pptx) and vector PDF document${parentQuotationNumber ? ` (Revision of ${parentQuotationNumber})` : ''}.`
+                : 'Your customized quotation will be generated in both PowerPoint (.pptx) and PDF (.pdf) formats simultaneously.'}
             </p>
           </div>
 
@@ -434,7 +513,7 @@ export default function StepReviewGenerate({
               ) : (
                 <>
                   <Sparkles className="w-5 h-5" />
-                  <span>Generate Quotation (PPTX & PDF)</span>
+                  <span>{hasChangesSinceGeneration ? '⚡ Generate Updated Quotation (PPTX & PDF)' : 'Generate Quotation (PPTX & PDF)'}</span>
                 </>
               )}
             </button>
@@ -448,6 +527,39 @@ export default function StepReviewGenerate({
               <p className="text-xs text-amber-800 font-mono font-semibold">
                 Subtracting PPTX Slides • Rendering Vector PDF • Generating Dual Exports...
               </p>
+            </div>
+          )}
+
+          {/* Reference to previously generated quotation if available */}
+          {generationResult && hasChangesSinceGeneration && (
+            <div className="w-full max-w-xl mt-4 pt-4 border-t border-slate-200 text-left">
+              <button
+                type="button"
+                onClick={() => setShowPreviousResult(!showPreviousResult)}
+                className="w-full flex items-center justify-between text-xs text-slate-500 hover:text-slate-800 font-medium py-1 cursor-pointer"
+              >
+                <span>📂 Previous Generation ({parentQuotationNumber || generationResult.quotationNumber})</span>
+                <span className="font-mono text-[11px] underline text-amber-700">{showPreviousResult ? 'Hide' : 'Show downloads'}</span>
+              </button>
+              {showPreviousResult && (
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <span className="text-slate-600">
+                    Compiled previously as <strong>{parentQuotationNumber || generationResult.quotationNumber}</strong>
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {pdfDownloadUrl && (
+                      <a href={pdfDownloadUrl} download className="px-2.5 py-1 rounded bg-white border border-slate-200 text-cyan-800 hover:text-cyan-900 font-semibold text-[11px]">
+                        Previous PDF
+                      </a>
+                    )}
+                    {pptxDownloadUrl && (
+                      <a href={pptxDownloadUrl} download className="px-2.5 py-1 rounded bg-white border border-slate-200 text-amber-800 hover:text-amber-900 font-semibold text-[11px]">
+                        Previous PPTX
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

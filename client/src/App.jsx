@@ -524,10 +524,13 @@ export default function App() {
 
     // 3. Restore selected variants
     if (quote.selectedVariantIds && Array.isArray(quote.selectedVariantIds) && quote.selectedVariantIds.length > 0) {
-      setSelectedVariantIds(quote.selectedVariantIds);
+      setSelectedVariantIds(quote.selectedVariantIds.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id));
     } else if (quote.selectedVariants) {
       const vids = Array.isArray(quote.selectedVariants)
-        ? quote.selectedVariants.map(v => (typeof v === 'string' ? v : v.id)).filter(Boolean)
+        ? quote.selectedVariants.map(v => {
+            const rawId = typeof v === 'string' ? v : v.id;
+            return rawId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : rawId;
+          }).filter(Boolean)
         : [];
       if (vids.length > 0) setSelectedVariantIds(vids);
     }
@@ -536,7 +539,7 @@ export default function App() {
     if (quote.unitPagesMetadata && Array.isArray(quote.unitPagesMetadata) && quote.unitPagesMetadata.length > 0) {
       setUnitPages(quote.unitPagesMetadata.map((u, i) => ({
         id: u.id || `unit-${i + 1}`,
-        variantId: u.variantId || 'all',
+        variantId: (u.variantId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : u.variantId) || 'all',
         title: u.title || `Unit ${i + 1}`,
         category: u.category || 'Modular Kitchen',
         notes: u.notes || '',
@@ -560,11 +563,12 @@ export default function App() {
     }
 
     // 6. Restore Quotation Snip Files
+    let restoredSnips = {};
     if (quote.snipsMetadata && typeof quote.snipsMetadata === 'object') {
-      const restoredSnips = {};
       Object.entries(quote.snipsMetadata).forEach(([vid, items]) => {
-        restoredSnips[vid] = (Array.isArray(items) ? items : [items]).map((item, idx) => ({
-          id: item.id || `snip_${vid}_${idx + 1}`,
+        const targetVid = vid === 'var-surabhi-ll-elite' ? 'var-ll-elite' : vid;
+        restoredSnips[targetVid] = (Array.isArray(items) ? items : [items]).map((item, idx) => ({
+          id: item.id || `snip_${targetVid}_${idx + 1}`,
           title: item.title || (idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`),
           file: null,
           previewUrl: typeof item === 'string' ? item : (item.previewUrl || null),
@@ -590,8 +594,11 @@ export default function App() {
       },
       repInfo: quote.repInfo || DEFAULT_REP_INFO,
       selectedVariantIds: (quote.selectedVariantIds && quote.selectedVariantIds.length > 0)
-        ? quote.selectedVariantIds
-        : (quote.selectedVariants ? quote.selectedVariants.map(v => (typeof v === 'string' ? v : v.id)).filter(Boolean) : DEFAULT_VARIANT_IDS),
+        ? quote.selectedVariantIds.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id)
+        : (quote.selectedVariants ? quote.selectedVariants.map(v => {
+            const rawId = typeof v === 'string' ? v : v.id;
+            return rawId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : rawId;
+          }).filter(Boolean) : DEFAULT_VARIANT_IDS),
       unitPages: quote.unitPagesMetadata || DEFAULT_UNIT_PAGES,
       accessoryPages: quote.accessoryPagesMetadata || DEFAULT_ACCESSORY_PAGES,
       snipFiles: restoredSnips

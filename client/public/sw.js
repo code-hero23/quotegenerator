@@ -1,5 +1,5 @@
 // Cookscape Quote Generator - Service Worker
-const CACHE_NAME = 'cookscape-pwa-v1';
+const CACHE_NAME = 'cookscape-pwa-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -49,8 +49,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Never cache API or upload endpoints - direct network access
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/uploads')) {
+  // Never cache API, uploads, or Vite development modules / localhost
+  if (
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/uploads') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src') ||
+    url.hostname === 'localhost' ||
+    url.hostname === '127.0.0.1'
+  ) {
     return;
   }
 

@@ -234,9 +234,22 @@ export default function App() {
     return draft || DEFAULT_REP_INFO;
   });
 
-  const [selectedVariantIds, setSelectedVariantIds] = useState(() => initialDraft?.selectedVariantIds || DEFAULT_VARIANT_IDS);
-  const [snipFiles, setSnipFiles] = useState(() => initialDraft?.snipFiles || {});
-  const [unitPages, setUnitPages] = useState(() => (initialDraft?.unitPages && initialDraft.unitPages.length > 0) ? initialDraft.unitPages : DEFAULT_UNIT_PAGES);
+  const [selectedVariantIds, setSelectedVariantIds] = useState(() => {
+    const raw = initialDraft?.selectedVariantIds || DEFAULT_VARIANT_IDS;
+    return raw.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id);
+  });
+  const [snipFiles, setSnipFiles] = useState(() => {
+    const raw = { ...(initialDraft?.snipFiles || {}) };
+    if (raw['var-surabhi-ll-elite']) {
+      raw['var-ll-elite'] = raw['var-surabhi-ll-elite'];
+      delete raw['var-surabhi-ll-elite'];
+    }
+    return raw;
+  });
+  const [unitPages, setUnitPages] = useState(() => {
+    const pages = (initialDraft?.unitPages && initialDraft.unitPages.length > 0) ? initialDraft.unitPages : DEFAULT_UNIT_PAGES;
+    return pages.map(p => p.variantId === 'var-surabhi-ll-elite' ? { ...p, variantId: 'var-ll-elite' } : p);
+  });
   const [accessoryPages, setAccessoryPages] = useState(() => (initialDraft?.accessoryPages && initialDraft.accessoryPages.length > 0) ? initialDraft.accessoryPages : DEFAULT_ACCESSORY_PAGES);
 
   const [isGenerating, setIsGenerating] = useState(false);

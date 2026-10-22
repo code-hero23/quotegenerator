@@ -8,6 +8,13 @@ node_modules/
 !.env.example
 *.env
 
+# Credentials & Demo accounts
+demo_users.txt
+demo-users.txt
+demo_credentials.txt
+credentials.txt
+*.credentials.txt
+
 # Build outputs
 dist/
 dist-ssr/

@@ -633,15 +633,15 @@ class PptxEngine {
     const newFooter = `${escapeXml(clientInfo.name || 'Client')} | ${escapeXml(clientInfo.location || 'Site Location')} | ${escapeXml(clientInfo.contact || clientInfo.contactNumber || '')}`;
 
     // 6. Template Variables for Cover Slide (Slide 1 - XML escaped)
-    const clientName = escapeXml(clientInfo.name || '');
-    const clientContact = escapeXml(clientInfo.contact || clientInfo.contactNumber || '');
-    const clientEmail = escapeXml(clientInfo.email || '');
-    const location = escapeXml(clientInfo.location || '');
-    const dateStr = escapeXml(clientInfo.date ? (typeof clientInfo.date === 'string' ? clientInfo.date : new Date(clientInfo.date).toLocaleDateString('en-GB')) : new Date().toLocaleDateString('en-GB'));
+    const clientName = escapeXml(String(clientInfo.name || '').trim());
+    const clientContact = escapeXml(String(clientInfo.contact || clientInfo.contactNumber || '').trim());
+    const clientEmail = escapeXml(String(clientInfo.email || '').trim());
+    const location = escapeXml(String(clientInfo.location || '').trim());
+    const dateStr = escapeXml(String(clientInfo.date ? (typeof clientInfo.date === 'string' ? clientInfo.date : new Date(clientInfo.date).toLocaleDateString('en-GB')) : new Date().toLocaleDateString('en-GB')).trim());
 
-    const repName = escapeXml(repInfo.name || '');
-    const repContact = escapeXml(repInfo.contact || repInfo.contactNumber || '');
-    const repEmail = escapeXml(repInfo.email || '');
+    const repName = escapeXml(String(repInfo.name || '').trim());
+    const repContact = escapeXml(String(repInfo.contact || repInfo.contactNumber || '').trim());
+    const repEmail = escapeXml(String(repInfo.email || '').trim());
 
     // Map of specific replacements
     const coverReplacements = [
@@ -663,6 +663,39 @@ class PptxEngine {
       { search: /Mr\.\s*Abishek/g, replace: repName },
       { search: /93611\s*84787/g, replace: repContact },
       { search: /designs\.cookscape@gmail\.com/g, replace: repEmail }
+    ];
+
+    // Align Client Details & Architect Details card shapes precisely
+    const shapeAlignments = [
+      // Client Details: Labels (x = 1140000)
+      { id: '60', off: { x: 1140000, y: 8168341 } },
+      { id: '51', off: { x: 1140000, y: 8667320 } },
+      { id: '62', off: { x: 1140000, y: 9156700 } },
+      { id: '64', off: { x: 1140000, y: 9613900 } },
+      // Client Details: Colons (x = 2266527)
+      { id: '65', off: { x: 2266527, y: 8168341 } },
+      { id: '66', off: { x: 2266527, y: 8667320 } },
+      { id: '69', off: { x: 2266527, y: 9156700 } },
+      { id: '68', off: { x: 2266527, y: 9613900 } },
+      // Client Details: Values (x = 2420000, width = 3600000)
+      { id: '73', off: { x: 2420000, y: 8095502 }, ext: { cx: 3600000, cy: 369332 } },
+      { id: '74', off: { x: 2420000, y: 8594481 }, ext: { cx: 3600000, cy: 369332 } },
+      { id: '76', off: { x: 2420000, y: 9083861 }, ext: { cx: 3600000, cy: 369332 } },
+      { id: '77', off: { x: 2420000, y: 9541061 }, ext: { cx: 3600000, cy: 369332 } },
+      // Architect Details: Icons
+      { id: '27', off: { x: 4248150, y: 11456931 } },
+      // Architect Details: Labels (x = 4850877)
+      { id: '59', off: { x: 4850877, y: 10693847 } },
+      { id: '61', off: { x: 4850877, y: 11182762 } },
+      { id: '53', off: { x: 4850877, y: 11605675 } },
+      // Architect Details: Colons (x = 6150000)
+      { id: '71', off: { x: 6150000, y: 10693847 } },
+      { id: '70', off: { x: 6150000, y: 11182762 } },
+      { id: '72', off: { x: 6150000, y: 11605675 } },
+      // Architect Details: Values (x = 6300000, width = 2750000)
+      { id: '80', off: { x: 6300000, y: 10684772 }, ext: { cx: 2750000, cy: 307777 } },
+      { id: '79', off: { x: 6300000, y: 11173687 }, ext: { cx: 2750000, cy: 307777 } },
+      { id: '78', off: { x: 6300000, y: 11596600 }, ext: { cx: 2750000, cy: 307777 } }
     ];
 
     // Map quotation slide numbers to variant IDs
@@ -708,12 +741,27 @@ class PptxEngine {
         slideXml = slideXml.replaceAll('Mr. Aravindan | Individual Villa Adyar | 7418414780', newFooter);
       }
 
-      // If Cover Slide (slide 1), apply all client & rep tag replacements
+      // If Cover Slide (slide 1), apply all client & rep tag replacements and enforce perfect alignment
       if (slide.displayIndex === 1) {
         for (const item of coverReplacements) {
           if (item.replace !== undefined && item.replace !== null) {
             slideXml = slideXml.replace(item.search, item.replace);
           }
+        }
+
+        // Apply precise alignment and geometry transforms for Client & Architect cards
+        for (const item of shapeAlignments) {
+          const spRegex = new RegExp(`(<p:sp>(?:(?!<\\/p:sp>)[\\s\\S])*?id="${item.id}"[\\s\\S]*?<\\/p:sp>)`, 'g');
+          slideXml = slideXml.replace(spRegex, (fullSp) => {
+            let updatedSp = fullSp;
+            if (item.off) {
+              updatedSp = updatedSp.replace(/<a:off\s+x="\d+"\s+y="\d+"\s*\/>/, `<a:off x="${item.off.x}" y="${item.off.y}"/>`);
+            }
+            if (item.ext) {
+              updatedSp = updatedSp.replace(/<a:ext\s+cx="\d+"\s+cy="\d+"\s*\/>/, `<a:ext cx="${item.ext.cx}" cy="${item.ext.cy}"/>`);
+            }
+            return updatedSp;
+          });
         }
       }
 

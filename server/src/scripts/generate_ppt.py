@@ -145,15 +145,51 @@ def generate_ppt(payload_path):
 
             # Cover slide (slide 1)
             if s['displayIndex'] == 1:
-                slide_xml = re.sub(r'Mr\.\s*Aravindan', client_name, slide_xml)
-                slide_xml = re.sub(r'7418414780', client_contact, slide_xml)
-                slide_xml = re.sub(r'Webapp\.cookscape@gmail\.com', client_email, slide_xml)
-                slide_xml = re.sub(r'Individual Villa Adyar', location, slide_xml)
+                slide_xml = re.sub(r'Mr\.\s*Aravindan', client_name.strip(), slide_xml)
+                slide_xml = re.sub(r'7418414780', client_contact.strip(), slide_xml)
+                slide_xml = re.sub(r'Webapp\.cookscape@gmail\.com', client_email.strip(), slide_xml)
+                slide_xml = re.sub(r'Individual Villa Adyar', location.strip(), slide_xml)
                 if date_str:
-                    slide_xml = re.sub(r'10/10/2026', date_str, slide_xml)
-                slide_xml = re.sub(r'Mr\.\s*Abishek', rep_name, slide_xml)
-                slide_xml = re.sub(r'93611\s*84787', rep_contact, slide_xml)
-                slide_xml = re.sub(r'designs\.cookscape@gmail\.com', rep_email, slide_xml)
+                    slide_xml = re.sub(r'10/10/2026', date_str.strip(), slide_xml)
+                slide_xml = re.sub(r'Mr\.\s*Abishek', rep_name.strip(), slide_xml)
+                slide_xml = re.sub(r'93611\s*84787', rep_contact.strip(), slide_xml)
+                slide_xml = re.sub(r'designs\.cookscape@gmail\.com', rep_email.strip(), slide_xml)
+
+                # Alignment definitions
+                alignments = [
+                    ('60', (1140000, 8168341), None),
+                    ('51', (1140000, 8667320), None),
+                    ('62', (1140000, 9156700), None),
+                    ('64', (1140000, 9613900), None),
+                    ('65', (2266527, 8168341), None),
+                    ('66', (2266527, 8667320), None),
+                    ('69', (2266527, 9156700), None),
+                    ('68', (2266527, 9613900), None),
+                    ('73', (2420000, 8095502), (3600000, 369332)),
+                    ('74', (2420000, 8594481), (3600000, 369332)),
+                    ('76', (2420000, 9083861), (3600000, 369332)),
+                    ('77', (2420000, 9541061), (3600000, 369332)),
+                    ('27', (4248150, 11456931), None),
+                    ('59', (4850877, 10693847), None),
+                    ('61', (4850877, 11182762), None),
+                    ('53', (4850877, 11605675), None),
+                    ('71', (6150000, 10693847), None),
+                    ('70', (6150000, 11182762), None),
+                    ('72', (6150000, 11605675), None),
+                    ('80', (6300000, 10684772), (2750000, 307777)),
+                    ('79', (6300000, 11173687), (2750000, 307777)),
+                    ('78', (6300000, 11596600), (2750000, 307777)),
+                ]
+                for sp_id, off, ext in alignments:
+                    def replace_sp(m):
+                        s_text = m.group(0)
+                        if off:
+                            s_text = re.sub(r'<a:off\s+x="\d+"\s+y="\d+"\s*/>', f'<a:off x="{off[0]}" y="{off[1]}"/>', s_text)
+                        if ext:
+                            s_text = re.sub(r'<a:ext\s+cx="\d+"\s+cy="\d+"\s*/>', f'<a:ext cx="{ext[0]}" cy="{ext[1]}"/>', s_text)
+                        return s_text
+                    pattern = rf'(<p:sp>(?:(?!</p:sp>)[\s\S])*?id="{sp_id}"[\s\S]*?</p:sp>)'
+                    slide_xml = re.sub(pattern, replace_sp, slide_xml)
 
             # Save modified slide
             with open(slide_file, 'w', encoding='utf-8') as f:

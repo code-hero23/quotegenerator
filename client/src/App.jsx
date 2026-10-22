@@ -578,9 +578,22 @@ export default function App() {
     setGenerationResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('clientInfo', JSON.stringify(clientInfo));
-      formData.append('repInfo', JSON.stringify(repInfo));
+      const cleanedClient = {
+        ...clientInfo,
+        name: (clientInfo.name || '').trim(),
+        contact: (clientInfo.contact || '').trim(),
+        email: (clientInfo.email || '').trim(),
+        location: (clientInfo.location || '').trim(),
+        date: (clientInfo.date || '').trim()
+      };
+      const cleanedRep = {
+        ...repInfo,
+        name: (repInfo.name || '').trim(),
+        contact: (repInfo.contact || '').trim(),
+        email: (repInfo.email || '').trim()
+      };
+      formData.append('clientInfo', JSON.stringify(cleanedClient));
+      formData.append('repInfo', JSON.stringify(cleanedRep));
       formData.append('selectedVariantIds', JSON.stringify(selectedVariantIds));
       formData.append('engineType', engineType);
       if (activeUser) {

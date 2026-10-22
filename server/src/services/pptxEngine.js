@@ -292,7 +292,7 @@ class PptxEngine {
         }
         if (!Array.isArray(indices) || indices.length < 2) continue;
 
-        // The quotation slide is the last slide of the variant (e.g. slide 9 for Surabhi, slide 12 for Capricoast)
+        // The quotation slide is the last slide of the variant (e.g. slide 9 for LL Elite, slide 12 for Capricoast)
         const quoteSlideNum = Number(indices[indices.length - 1]);
 
         // Find matching unit snips for this variant
@@ -326,7 +326,7 @@ class PptxEngine {
 
           let unitXml = templateSlideXml;
           unitXml = unitXml.replace(
-            /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
+            /<a:t>LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
             `<a:t>${uTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT"/></a:rPr><a:t>${uCat}</a:t>`
           );
 
@@ -419,7 +419,7 @@ class PptxEngine {
 
         let accXml = templateSlideXml;
         accXml = accXml.replace(
-          /<a:t>SURABHI - LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/,
+          /<a:t>LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
           `<a:t>${aTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/><a:ea typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/></a:rPr><a:t>${aCat}</a:t>`
         );
 
@@ -740,6 +740,9 @@ class PptxEngine {
         // Handle variations in whitespace or client name
         slideXml = slideXml.replaceAll('Mr. Aravindan | Individual Villa Adyar | 7418414780', newFooter);
       }
+
+      // Normalize any legacy presentation slide text to "LL ELITE"
+      slideXml = slideXml.replace(/SURABHI\s*-?\s*LL ELITE/gi, 'LL ELITE');
 
       // If Cover Slide (slide 1), apply all client & rep tag replacements and enforce perfect alignment
       if (slide.displayIndex === 1) {

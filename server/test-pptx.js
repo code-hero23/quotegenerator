@@ -14,7 +14,7 @@ async function runTest() {
 
   // All 5 variants in Master-Template:
   const allVariants = [
-    { id: 'var_1', name: 'SURABHI - LL ELITE', slideIndices: [7, 8, 9] },
+    { id: 'var_1', name: 'LL ELITE', slideIndices: [7, 8, 9] },
     { id: 'var_2', name: 'CAPRICOAST MATTE', slideIndices: [10, 11, 12] },
     { id: 'var_3', name: 'CAPRICOST GLOSSY', slideIndices: [13, 14, 15] },
     { id: 'var_4', name: 'ELEGANT SURABHI', slideIndices: [16, 17, 18] },

@@ -11,7 +11,7 @@ The application operates on your 29-slide master template: `Master-Template.pptx
 ### Master Slide Structure:
 - **Slide 1**: Cover Page (Personalized Design, Client Details, Sales Rep / Designer Details, Date)
 - **Slides 2 – 6**: Introduction, Design Philosophy, Process & Portfolio
-- **Slides 7 – 9**: Variant 1 — `SURABHI - LL ELITE` (Divider, Specs, Quotation Slide)
+- **Slides 7 – 9**: Variant 1 — `LL ELITE` (Divider, Specs, Quotation Slide)
 - **Slides 10 – 12**: Variant 2 — `CAPRICOAST MATTE` (Divider, Specs, Quotation Slide)
 - **Slides 13 – 15**: Variant 3 — `CAPRICOST GLOSSY` (Divider, Specs, Quotation Slide)
 - **Slides 16 – 18**: Variant 4 — `ELEGANT SURABHI` (Divider, Specs, Quotation Slide)

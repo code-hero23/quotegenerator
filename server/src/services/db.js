@@ -4,8 +4,8 @@ const path = require('path');
 // Initial seed dataset without pricing
 const defaultVariants = [
   {
-    id: 'var-surabhi-ll-elite',
-    name: 'SURABHI - LL ELITE',
+    id: 'var-ll-elite',
+    name: 'LL ELITE',
     category: 'Premium Marine Interior',
     description: 'High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.',
     specs: {
@@ -186,13 +186,31 @@ function loadLocalStore() {
       if (parsed && Array.isArray(parsed.variants)) {
         let updated = false;
 
-        // Strip prices from all variants if present
+        // Strip prices from all variants if present and normalize variant names
         parsed.variants.forEach(v => {
           if ('price' in v) {
             delete v.price;
             updated = true;
           }
+          if (v.name === 'LL-ELITE') {
+            v.name = 'LL ELITE';
+            updated = true;
+          }
         });
+
+        // Ensure saved quotations also display 'LL ELITE' and 'var-ll-elite'
+        if (Array.isArray(parsed.quotations)) {
+          parsed.quotations.forEach(q => {
+            if (Array.isArray(q.selectedVariants)) {
+              q.selectedVariants.forEach(v => {
+                if (v.name === 'LL-ELITE') {
+                  v.name = 'LL ELITE';
+                  updated = true;
+                }
+              });
+            }
+          });
+        }
 
         // Ensure users array exists with admin and proper roles
         if (!Array.isArray(parsed.users) || parsed.users.length === 0) {

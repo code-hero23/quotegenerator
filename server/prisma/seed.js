@@ -4,8 +4,8 @@ const prisma = new PrismaClient();
 
 const variants = [
   {
-    id: 'var-surabhi-ll-elite',
-    name: 'SURABHI - LL ELITE',
+    id: 'var-ll-elite',
+    name: 'LL ELITE',
     category: 'Premium Marine Interior',
     description: 'High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.',
     price: 345000,

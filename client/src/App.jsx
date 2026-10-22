@@ -21,8 +21,8 @@ const API_BASE = '/api';
 
 const fallbackVariants = [
   {
-    id: 'var-surabhi-ll-elite',
-    name: 'SURABHI - LL ELITE',
+    id: 'var-ll-elite',
+    name: 'LL ELITE',
     category: 'Premium Marine Interior',
     description: 'High-end Marine Ply BWR construction with frosty white carcass and solid laminate finish.',
     specs: {
@@ -111,7 +111,7 @@ const DEFAULT_REP_INFO = {
 };
 
 const DEFAULT_VARIANT_IDS = [
-  'var-surabhi-ll-elite',
+  'var-ll-elite',
   'var-capricoast-matte'
 ];
 

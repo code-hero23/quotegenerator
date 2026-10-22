@@ -415,7 +415,23 @@ export default function App() {
     try {
       const res = await axios.get(`${API_BASE}/variants`);
       if (res.data && res.data.data && res.data.data.length > 0) {
-        setVariants(res.data.data);
+        const cleanVariants = res.data.data.map(v => {
+          if (
+            v.id === 'var-surabhi-ll-elite' ||
+            v.name === 'SURABHI - LL ELITE' ||
+            v.name === 'SURABHI  - LL ELITE' ||
+            v.name === 'LL-ELITE' ||
+            (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
+          ) {
+            return {
+              ...v,
+              id: 'var-ll-elite',
+              name: 'LL ELITE'
+            };
+          }
+          return v;
+        });
+        setVariants(cleanVariants);
       }
     } catch (e) {
       console.warn('Using default template variants fallback:', e.message);
@@ -427,7 +443,24 @@ export default function App() {
       const params = user ? { userId: user.id, role: user.role } : {};
       const res = await axios.get(`${API_BASE}/quotations`, { params });
       if (res.data && res.data.data) {
-        setQuotations(res.data.data);
+        const cleanQuotes = res.data.data.map(q => {
+          if (Array.isArray(q.selectedVariants)) {
+            q.selectedVariants = q.selectedVariants.map(v => {
+              if (
+                v.id === 'var-surabhi-ll-elite' ||
+                v.name === 'SURABHI - LL ELITE' ||
+                v.name === 'SURABHI  - LL ELITE' ||
+                v.name === 'LL-ELITE' ||
+                (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
+              ) {
+                return { ...v, id: 'var-ll-elite', name: 'LL ELITE' };
+              }
+              return v;
+            });
+          }
+          return q;
+        });
+        setQuotations(cleanQuotes);
       }
     } catch (e) {
       console.warn('Quotations fetch failed:', e.message);
@@ -591,6 +624,7 @@ export default function App() {
     setGenerationResult(null);
 
     try {
+      const formData = new FormData();
       const cleanedClient = {
         ...clientInfo,
         name: (clientInfo.name || '').trim(),

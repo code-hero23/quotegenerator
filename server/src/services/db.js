@@ -192,7 +192,16 @@ function loadLocalStore() {
             delete v.price;
             updated = true;
           }
-          if (v.name === 'LL-ELITE') {
+          if (v.id === 'var-surabhi-ll-elite') {
+            v.id = 'var-ll-elite';
+            updated = true;
+          }
+          if (
+            v.name === 'SURABHI - LL ELITE' ||
+            v.name === 'SURABHI  - LL ELITE' ||
+            v.name === 'LL-ELITE' ||
+            (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
+          ) {
             v.name = 'LL ELITE';
             updated = true;
           }
@@ -203,7 +212,16 @@ function loadLocalStore() {
           parsed.quotations.forEach(q => {
             if (Array.isArray(q.selectedVariants)) {
               q.selectedVariants.forEach(v => {
-                if (v.name === 'LL-ELITE') {
+                if (v.id === 'var-surabhi-ll-elite') {
+                  v.id = 'var-ll-elite';
+                  updated = true;
+                }
+                if (
+                  v.name === 'SURABHI - LL ELITE' ||
+                  v.name === 'SURABHI  - LL ELITE' ||
+                  v.name === 'LL-ELITE' ||
+                  (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
+                ) {
                   v.name = 'LL ELITE';
                   updated = true;
                 }

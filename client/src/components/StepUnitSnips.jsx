@@ -48,7 +48,9 @@ export default function StepUnitSnips({
   const handleAddPage = () => {
     const newIndex = unitPages.length + 1;
     const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
-    const targetVariantId = selectedVariantFilter === 'all' ? 'all' : selectedVariantFilter;
+    const targetVariantId = selectedVariantFilter === 'all' 
+      ? (selectedVariants.length === 1 ? selectedVariants[0].id : 'all') 
+      : selectedVariantFilter;
     const newPage = {
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       variantId: targetVariantId,
@@ -162,9 +164,15 @@ export default function StepUnitSnips({
 
       if (!e.clipboardData) return;
 
-      // Find target unit page (either explicitly active, or first empty page, or first page)
-      const targetPage = unitPages.find(p => p.id === activePageId) ||
-                         unitPages.find(p => !p.file) ||
+      // Find target unit page within visible pages
+      const visiblePages = unitPages.filter(page => {
+        if (selectedVariantFilter === 'all') return true;
+        const pVid = page.variantId || 'all';
+        return pVid === selectedVariantFilter || pVid === 'all';
+      });
+      const targetPage = visiblePages.find(p => p.id === activePageId) ||
+                         visiblePages.find(p => !p.file) ||
+                         visiblePages[0] ||
                          unitPages[0];
 
       if (!targetPage) return;
@@ -271,7 +279,10 @@ export default function StepUnitSnips({
               All Units ({unitPages.length})
             </button>
             {selectedVariants.map(v => {
-              const count = unitPages.filter(p => p.variantId === v.id || (!p.variantId && selectedVariantFilter === 'all') || p.variantId === 'all').length;
+              const count = unitPages.filter(p => {
+                const pVid = p.variantId || 'all';
+                return pVid === v.id || pVid === 'all';
+              }).length;
               return (
                 <button
                   key={v.id}
@@ -310,9 +321,12 @@ export default function StepUnitSnips({
         {unitPages
           .filter(page => {
             if (selectedVariantFilter === 'all') return true;
-            return page.variantId === selectedVariantFilter || page.variantId === 'all' || !page.variantId;
+            const pVid = page.variantId || 'all';
+            return pVid === selectedVariantFilter || pVid === 'all';
           })
           .map((page, index) => {
+          const isAllVariants = !page.variantId || page.variantId === 'all';
+          const assignedVariant = !isAllVariants ? variants.find(v => v.id === page.variantId) : null;
           return (
             <div
               key={page.id}
@@ -340,6 +354,15 @@ export default function StepUnitSnips({
                       className="text-base font-bold text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-amber-500 focus:outline-none w-full py-0.5 transition-colors truncate"
                     />
                   </div>
+
+                  {/* Target Variant Badge */}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                    isAllVariants 
+                      ? 'bg-amber-50 text-amber-900 border-amber-200' 
+                      : 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                  }`}>
+                    {isAllVariants ? '🌟 All Variants' : `🎯 ${assignedVariant?.name || 'Assigned Variant'}`}
+                  </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">

@@ -6,6 +6,15 @@ import {
   Pencil, Check, Briefcase, Layers, Building
 } from 'lucide-react';
 
+export const normalizeUserRole = (rawRole) => {
+  if (!rawRole) return 'fa';
+  const r = String(rawRole).trim().toLowerCase();
+  if (r === 'admin' || r.includes('admin')) return 'admin';
+  if (r === 'bh' || r === 'business_head' || r === 'businesshead' || r.includes('business')) return 'bh';
+  if (r === 'la' || r === 'lead_architect' || r === 'leadarchitect' || r.includes('lead')) return 'la';
+  return 'fa';
+};
+
 export default function UserManagementModal({ isOpen, onClose, activeUser, onUserUpdated }) {
   const [users, setUsers] = useState([]);
   const [allBhList, setAllBhList] = useState([]);
@@ -15,8 +24,9 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
   const [successMsg, setSuccessMsg] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
 
-  const isAdmin = activeUser?.role === 'admin';
-  const isBH = activeUser?.role === 'bh';
+  const userRole = normalizeUserRole(activeUser?.role);
+  const isAdmin = userRole === 'admin';
+  const isBH = userRole === 'bh';
 
   // New User Form State
   const [formData, setFormData] = useState({
@@ -44,6 +54,7 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
 
   useEffect(() => {
     if (isOpen) {
+      setActiveTab('all');
       fetchUsers();
       setError(null);
       setSuccessMsg(null);
@@ -72,8 +83,8 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
 
       // 2. Fetch list of Business Heads for assignment dropdown (if admin or needed)
       if (isAdmin) {
-        // Admin gets all users, so extract BHs directly
-        const bList = (res.data.data || []).filter(u => u.role === 'bh');
+        // Admin gets all users, so extract BHs directly using normalized role
+        const bList = (res.data.data || []).filter(u => normalizeUserRole(u.role) === 'bh');
         setAllBhList(bList);
         if (bList.length > 0 && !formData.bhId) {
           setFormData(prev => ({ ...prev, bhId: bList[0].id }));
@@ -272,7 +283,8 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
     }
   };
 
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (rawRole) => {
+    const role = normalizeUserRole(rawRole);
     switch (role) {
       case 'admin':
         return {
@@ -299,7 +311,6 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
           avatarClass: 'bg-emerald-600 text-white'
         };
       case 'fa':
-      case 'architect':
       default:
         return {
           label: 'Feasibility Architect',
@@ -313,20 +324,21 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
 
   if (!isOpen) return null;
 
-  // Filter users by tab
+  // Filter users strictly by normalized role
   const filteredUsers = users.filter(u => {
+    const r = normalizeUserRole(u.role);
     if (activeTab === 'all') return true;
-    if (activeTab === 'bh') return u.role === 'bh';
-    if (activeTab === 'fa') return u.role === 'fa' || u.role === 'architect';
-    if (activeTab === 'la') return u.role === 'la';
-    if (activeTab === 'admin') return u.role === 'admin';
-    return true;
+    if (activeTab === 'bh') return r === 'bh';
+    if (activeTab === 'fa') return r === 'fa';
+    if (activeTab === 'la') return r === 'la';
+    if (activeTab === 'admin') return r === 'admin';
+    return false;
   });
 
-  const bhCount = users.filter(u => u.role === 'bh').length;
-  const faCount = users.filter(u => u.role === 'fa' || u.role === 'architect').length;
-  const laCount = users.filter(u => u.role === 'la').length;
-  const adminCount = users.filter(u => u.role === 'admin').length;
+  const bhCount = users.filter(u => normalizeUserRole(u.role) === 'bh').length;
+  const faCount = users.filter(u => normalizeUserRole(u.role) === 'fa').length;
+  const laCount = users.filter(u => normalizeUserRole(u.role) === 'la').length;
+  const adminCount = users.filter(u => normalizeUserRole(u.role) === 'admin').length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
@@ -847,12 +859,12 @@ export default function UserManagementModal({ isOpen, onClose, activeUser, onUse
                           </span>
                         </div>
 
-                        {/* Reporting Line (for FA and LA) */}
-                        {(user.role === 'fa' || user.role === 'la' || user.role === 'architect') && (
+                        {/* Reporting Line (strictly for FA and LA) */}
+                        {(normalizeUserRole(user.role) === 'fa' || normalizeUserRole(user.role) === 'la') && user.bhName && (
                           <div className="pt-0.5">
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                               <Building className="w-3 h-3 text-indigo-600" />
-                              <span>Reports to: <strong className="text-indigo-900">{user.bhName || 'Unassigned BH'}</strong></span>
+                              <span>Reports to: <strong className="text-indigo-900">{user.bhName}</strong></span>
                             </span>
                           </div>
                         )}

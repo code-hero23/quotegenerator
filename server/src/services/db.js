@@ -250,10 +250,19 @@ function loadLocalStore() {
               updated = true;
             }
             // Link existing FAs and LAs to the default BH if unassigned
-            if ((u.role === 'fa' || u.role === 'la') && !u.bhId && defaultBh) {
-              u.bhId = defaultBh.id;
-              u.bhName = defaultBh.name || defaultBh.username;
-              updated = true;
+            if ((u.role === 'fa' || u.role === 'la')) {
+              if (!u.bhId && defaultBh) {
+                u.bhId = defaultBh.id;
+                u.bhName = defaultBh.name || defaultBh.username;
+                updated = true;
+              }
+            } else {
+              // Business Heads and Admins never report to a Business Head
+              if (u.bhId || u.bhName) {
+                delete u.bhId;
+                delete u.bhName;
+                updated = true;
+              }
             }
           });
         }

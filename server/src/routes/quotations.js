@@ -8,6 +8,7 @@ const PythonPptxEngine = require('../services/pythonPptxEngine');
 const PdfEngine = require('../services/pdfEngine');
 const { convertPptxToPdf } = require('../services/pptToPdf');
 const dbService = require('../services/db');
+const { resolveMasterTemplatePath } = require('../services/templateResolver');
 
 // Ensure uploads directories exist
 const uploadsDir = path.resolve(__dirname, '../../uploads');
@@ -457,9 +458,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     const allVariants = await dbService.getVariants();
     const selectedVariantDetails = allVariants.filter(v => selectedVariantIds.includes(v.id));
 
-    const masterTemplatePath = process.env.MASTER_TEMPLATE_PATH 
-      ? path.resolve(process.env.MASTER_TEMPLATE_PATH)
-      : path.resolve(__dirname, '../../../Master-Template.pptx');
+    const masterTemplatePath = resolveMasterTemplatePath();
 
     if (!fs.existsSync(masterTemplatePath)) {
       return res.status(500).json({ 

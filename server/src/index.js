@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const dbService = require('./services/db');
+const { resolveMasterTemplatePath } = require('./services/templateResolver');
 
 const variantsRouter = require('./routes/variants');
 const clientsRouter = require('./routes/clients');
@@ -36,10 +37,12 @@ app.use('/api/generate-quote', (req, res, next) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const tplPath = resolveMasterTemplatePath();
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    masterTemplatePath: process.env.MASTER_TEMPLATE_PATH || path.resolve(__dirname, '../../Master-Template.pptx')
+    masterTemplatePath: tplPath,
+    templateExists: fs.existsSync(tplPath)
   });
 });
 

@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
+const { resolveMasterTemplatePath } = require('./templateResolver');
 
 /**
  * Extracts image width and height from PNG, JPEG, WebP, GIF buffers without external dependencies
@@ -139,7 +140,9 @@ function calculateImageBounds(buf) {
  */
 class PptxEngine {
   constructor(masterTemplatePath) {
-    this.masterTemplatePath = masterTemplatePath;
+    this.masterTemplatePath = (masterTemplatePath && fs.existsSync(masterTemplatePath))
+      ? masterTemplatePath
+      : resolveMasterTemplatePath();
   }
 
   /**
@@ -165,6 +168,9 @@ class PptxEngine {
     quotationPagesMetadata = {},
     outputPath
   }) {
+    if (!fs.existsSync(this.masterTemplatePath)) {
+      this.masterTemplatePath = resolveMasterTemplatePath();
+    }
     if (!fs.existsSync(this.masterTemplatePath)) {
       throw new Error(`Master template not found at: ${this.masterTemplatePath}`);
     }

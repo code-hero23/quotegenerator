@@ -1,10 +1,11 @@
 const path = require('path');
 const fs = require('fs');
 const PptxEngine = require('./src/services/pptxEngine');
+const { resolveMasterTemplatePath } = require('./src/services/templateResolver');
 
 async function runTest() {
   console.log('--- Testing PPTX Template Subtraction Engine ---');
-  const masterPath = path.resolve(__dirname, '../Master-Template.pptx');
+  const masterPath = resolveMasterTemplatePath();
   const outputPath = path.resolve(__dirname, './uploads/generated/test_quote_result.pptx');
 
   console.log('Master Template Path:', masterPath);

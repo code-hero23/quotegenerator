@@ -54,8 +54,8 @@ export default function StepReviewGenerate({
     }
   });
 
-  const extraUnitSlides = Array.isArray(unitPages) ? unitPages.filter(p => p.file).length : 0;
-  const extraAccSlides = Array.isArray(accessoryPages) ? accessoryPages.filter(p => p.file).length : 0;
+  const extraUnitSlides = Array.isArray(unitPages) ? unitPages.filter(p => p.file || p.previewUrl || p.filePath).length : 0;
+  const extraAccSlides = Array.isArray(accessoryPages) ? accessoryPages.filter(p => p.file || p.previewUrl || p.filePath).length : 0;
   const estimatedOutputSlides = totalMasterSlides - subtractedSlidesCount + extraUnitSlides + extraAccSlides + extraVariantSlides;
 
   const handleStartGeneration = async () => {
@@ -222,26 +222,29 @@ export default function StepReviewGenerate({
                   Unit Breakdown Pages Configured: <strong className="text-amber-800">{unitPages.length} Unit Page(s)</strong>
                 </span>
                 <span className="text-[11px] text-slate-500 block">
-                  {unitPages.filter(u => u.file).length} snip image(s) attached
+                  {unitPages.filter(u => u.file || u.previewUrl || u.filePath).length} snip image(s) attached
                 </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
-              {unitPages.map((u, i) => (
-                <span 
-                  key={u.id || i} 
-                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
-                    u.file 
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                >
-                  <span>#{i + 1}</span>
-                  <span className="truncate max-w-[120px]">{u.category || u.title}</span>
-                  {u.file && <span className="text-emerald-600 font-bold">✓</span>}
-                </span>
-              ))}
+              {unitPages.map((u, i) => {
+                const isAttached = Boolean(u.file || u.previewUrl || u.filePath);
+                return (
+                  <span 
+                    key={u.id || i} 
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
+                      isAttached 
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                        : 'bg-white text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    <span>#{i + 1}</span>
+                    <span className="truncate max-w-[120px]">{u.title || u.category}</span>
+                    {isAttached && <span className="text-emerald-600 font-bold">✓</span>}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}
@@ -255,29 +258,32 @@ export default function StepReviewGenerate({
               </span>
               <div>
                 <span className="text-xs font-bold text-slate-800">
-                  Accessories & Hardware Pages: <strong className="text-purple-900">{accessoryPages.length} Page(s)</strong>
+                  Accessories &amp; Hardware Pages: <strong className="text-purple-900">{accessoryPages.length} Page(s)</strong>
                 </span>
                 <span className="text-[11px] text-slate-500 block">
-                  {accessoryPages.filter(a => a.file).length} hardware snip(s) attached
+                  {accessoryPages.filter(a => a.file || a.previewUrl || a.filePath).length} hardware snip(s) attached
                 </span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
-              {accessoryPages.map((a, i) => (
-                <span 
-                  key={a.id || i} 
-                  className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
-                    a.file 
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                      : 'bg-white text-slate-600 border-slate-200'
-                  }`}
-                >
-                  <span>#{i + 1}</span>
-                  <span className="truncate max-w-[130px]">{a.category || a.title}</span>
-                  {a.file && <span className="text-emerald-600 font-bold">✓</span>}
-                </span>
-              ))}
+              {accessoryPages.map((a, i) => {
+                const isAttached = Boolean(a.file || a.previewUrl || a.filePath);
+                return (
+                  <span 
+                    key={a.id || i} 
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
+                      isAttached 
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                        : 'bg-white text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    <span>#{i + 1}</span>
+                    <span className="truncate max-w-[120px]">{a.title || a.category}</span>
+                    {isAttached && <span className="text-emerald-600 font-bold">✓</span>}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

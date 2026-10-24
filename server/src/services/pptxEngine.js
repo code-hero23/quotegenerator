@@ -332,7 +332,7 @@ class PptxEngine {
 
           let unitXml = templateSlideXml;
           unitXml = unitXml.replace(
-            /<a:t>LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
+            /<a:t>[\s\S]*?<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
             `<a:t>${uTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT"/></a:rPr><a:t>${uCat}</a:t>`
           );
 
@@ -396,6 +396,7 @@ class PptxEngine {
           // Insert right before quotation slide
           keptSlides.splice(insertPos + uIdx, 0, {
             displayIndex: quoteSlideNum - 0.5 + (uIdx * 0.01),
+            baseSlideNum: quoteSlideNum,
             id: unitSldId,
             rId: unitRId,
             target: unitSlideTarget,
@@ -425,7 +426,7 @@ class PptxEngine {
 
         let accXml = templateSlideXml;
         accXml = accXml.replace(
-          /<a:t>LL ELITE<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
+          /<a:t>[\s\S]*?<\/a:t>[\s\S]*?<a:t>Quotation<\/a:t>/i,
           `<a:t>${aTitle}</a:t></a:r><a:br/><a:r><a:rPr lang="en-IN" sz="2000" dirty="0"><a:latin typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/><a:ea typeface="Baskerville Display PT" panose="020B0604020202020204" charset="0"/></a:rPr><a:t>${aCat}</a:t>`
         );
 
@@ -488,6 +489,7 @@ class PptxEngine {
 
         keptSlides.splice(accInsertIndex + aIdx, 0, {
           displayIndex: 21.1 + aIdx,
+          baseSlideNum: 9,
           id: accSldId,
           rId: accRId,
           target: accSlideTarget,

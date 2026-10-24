@@ -54,7 +54,7 @@ export default function StepUnitSnips({
     const newPage = {
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       variantId: targetVariantId,
-      title: '',
+      title: `Unit ${newIndex} - ${defaultCategory}`,
       category: defaultCategory,
       notes: '',
       file: null,
@@ -85,7 +85,7 @@ export default function StepUnitSnips({
       setUnitPages([{
         id: `unit_${Date.now()}`,
         variantId: 'all',
-        title: '',
+        title: 'Unit 1 - Modular Kitchen',
         category: 'Modular Kitchen',
         notes: '',
         file: null,
@@ -137,13 +137,21 @@ export default function StepUnitSnips({
 
   // Copy snip image to system clipboard (Ctrl+C helper)
   const handleCopySnip = async (page) => {
-    if (!page.file) return;
     try {
+      let blob = null;
+      if (page.file) {
+        blob = page.file;
+      } else if (page.previewUrl) {
+        const res = await fetch(page.previewUrl);
+        blob = await res.blob();
+      }
+      if (!blob) return;
+
       if (navigator.clipboard && window.ClipboardItem) {
         await navigator.clipboard.write([
-          new ClipboardItem({ [page.file.type || 'image/png']: page.file })
+          new ClipboardItem({ [blob.type || 'image/png']: blob })
         ]);
-        showToast(`📋 Copied image for "${page.title}" to clipboard!`);
+        showToast(`📋 Copied image for "${page.title || 'Unit'}" to clipboard!`);
       } else {
         showToast('⚠️ Clipboard copy is not supported in this browser', 'error');
       }
@@ -170,12 +178,14 @@ export default function StepUnitSnips({
         const pVid = page.variantId || 'all';
         return pVid === selectedVariantFilter || pVid === 'all';
       });
-      const targetPage = visiblePages.find(p => p.id === activePageId) ||
-                         visiblePages.find(p => !p.file) ||
-                         visiblePages[0] ||
-                         unitPages[0];
 
-      if (!targetPage) return;
+      let targetPage = visiblePages.find(p => p.id === activePageId);
+      if (!targetPage || targetPage.file || targetPage.previewUrl) {
+        const emptyPage = visiblePages.find(p => !p.file && !p.previewUrl);
+        if (emptyPage) {
+          targetPage = emptyPage;
+        }
+      }
 
       // 1. Check if clipboard contains an image (Snipping Tool, print screen, copied image)
       const items = e.clipboardData.items || [];
@@ -189,8 +199,29 @@ export default function StepUnitSnips({
 
       if (imageFile) {
         e.preventDefault();
-        handleFileChange(targetPage.id, imageFile);
-        showToast(`📋 Screenshot attached to "${targetPage.title}"!`);
+        if (targetPage && !targetPage.file && !targetPage.previewUrl) {
+          handleFileChange(targetPage.id, imageFile);
+          showToast(`📋 Screenshot attached to "${targetPage.title || 'Unit'}"!`);
+        } else {
+          // If all visible pages have attachments, auto-create a new unit page
+          const newIndex = unitPages.length + 1;
+          const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
+          const targetVariantId = selectedVariantFilter === 'all' 
+            ? (selectedVariants.length === 1 ? selectedVariants[0].id : 'all') 
+            : selectedVariantFilter;
+          const newPage = {
+            id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+            variantId: targetVariantId,
+            title: `Unit ${newIndex} - ${defaultCategory}`,
+            category: defaultCategory,
+            notes: '',
+            file: imageFile,
+            previewUrl: URL.createObjectURL(imageFile)
+          };
+          setUnitPages(prev => [...prev, newPage]);
+          setActivePageId(newPage.id);
+          showToast(`📋 Screenshot attached to new page: "${newPage.title}"!`);
+        }
         return;
       }
 
@@ -201,12 +232,37 @@ export default function StepUnitSnips({
           const tableData = parseClipboardTable(e.clipboardData);
           if (tableData && tableData.allRows.length > 0) {
             showToast('⏳ Converting Excel spreadsheet cells into crisp table image...', 'info');
+            const pageTitle = (targetPage && targetPage.title) 
+              ? targetPage.title 
+              : `Unit ${unitPages.length + 1} - Specifications`;
+            const pageCategory = (targetPage && targetPage.category) || 'Modular Kitchen';
             const convertedFile = await convertTableToImageFile(tableData, {
-              title: `${targetPage.title} - Specifications`,
-              filename: `Excel_Unit_${targetPage.category.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
+              title: `${pageTitle} - Specifications`,
+              filename: `Excel_Unit_${pageCategory.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
             });
-            handleFileChange(targetPage.id, convertedFile);
-            showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached as image!`);
+
+            if (targetPage && !targetPage.file && !targetPage.previewUrl) {
+              handleFileChange(targetPage.id, convertedFile);
+              showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${pageTitle}"!`);
+            } else {
+              const newIndex = unitPages.length + 1;
+              const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
+              const targetVariantId = selectedVariantFilter === 'all' 
+                ? (selectedVariants.length === 1 ? selectedVariants[0].id : 'all') 
+                : selectedVariantFilter;
+              const newPage = {
+                id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+                variantId: targetVariantId,
+                title: pageTitle,
+                category: defaultCategory,
+                notes: '',
+                file: convertedFile,
+                previewUrl: URL.createObjectURL(convertedFile)
+              };
+              setUnitPages(prev => [...prev, newPage]);
+              setActivePageId(newPage.id);
+              showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${newPage.title}"!`);
+            }
             return;
           }
         } catch (err) {
@@ -218,9 +274,9 @@ export default function StepUnitSnips({
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [unitPages, activePageId]);
+  }, [unitPages, activePageId, selectedVariantFilter, selectedVariants]);
 
-  const uploadedPagesCount = unitPages.filter(p => p.file).length;
+  const uploadedPagesCount = unitPages.filter(p => p.file || p.previewUrl).length;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -445,7 +501,7 @@ export default function StepUnitSnips({
                           <span>Snip Attached Successfully</span>
                         </div>
                         <p className="text-xs font-mono font-medium text-slate-700 truncate">
-                          {page.file ? page.file.name : 'Saved Quotation Snip'}
+                          {page.file ? page.file.name : (page.title ? `${page.title} Snip` : 'Saved Unit Snip')}
                         </p>
                         <p className="text-[11px] text-slate-500">
                           {page.file ? `${(page.file.size / 1024).toFixed(1)} KB • ` : ''}Will be inserted after {page.variantId && page.variantId !== 'all' ? (variants.find(v => v.id === page.variantId)?.name || 'variant') : 'each variant'} specs
@@ -532,6 +588,7 @@ export default function StepUnitSnips({
                       if (e.target.files && e.target.files[0]) {
                         handleFileChange(page.id, e.target.files[0]);
                       }
+                      e.target.value = '';
                     }}
                     accept="image/*"
                     className="hidden"

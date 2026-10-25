@@ -118,7 +118,7 @@ const DEFAULT_VARIANT_IDS = [
 const DEFAULT_UNIT_PAGES = [
   {
     id: 'unit-1',
-    variantId: 'all',
+    variantId: 'var-ll-elite',
     title: 'Unit 1 - Modular Kitchen',
     category: 'Modular Kitchen',
     notes: '',

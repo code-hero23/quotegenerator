@@ -43,18 +43,21 @@ export default function StepUnitSnips({
       setToast(prev => (prev?.message === message ? null : prev));
     }, 4000);
   };
-
-  // Add a new unit page (optionally assigned to active variant filter)
+  // Add a new unit page (assigned to active variant filter or first variant)
   const handleAddPage = () => {
     const newIndex = unitPages.length + 1;
     const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
-    const targetVariantId = selectedVariantFilter === 'all' 
-      ? (selectedVariants.length === 1 ? selectedVariants[0].id : 'all') 
-      : selectedVariantFilter;
+    const targetVariantId = selectedVariantFilter !== 'all'
+      ? selectedVariantFilter
+      : (selectedVariants.length > 0 ? selectedVariants[0].id : 'all');
+
+    const targetVarObj = variants.find(v => v.id === targetVariantId);
+    const varSuffix = targetVarObj ? ` (${targetVarObj.name})` : '';
+
     const newPage = {
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       variantId: targetVariantId,
-      title: `Unit ${newIndex} - ${defaultCategory}`,
+      title: `Unit ${newIndex} - ${defaultCategory}${selectedVariants.length > 1 ? varSuffix : ''}`,
       category: defaultCategory,
       notes: '',
       file: null,
@@ -63,20 +66,30 @@ export default function StepUnitSnips({
     setUnitPages(prev => [...prev, newPage]);
     setActivePageId(newPage.id);
   };
-
   // Duplicate a unit page for another variant
   const handleDuplicatePage = (page, targetVarId) => {
     const targetVar = variants.find(v => v.id === targetVarId);
     const varLabel = targetVar ? targetVar.name : 'All Variants';
+
+    // If the original page had 'all', bind it explicitly to the first/current variant
+    // so it doesn't duplicate across both variants in the PPTX
+    if (!page.variantId || page.variantId === 'all') {
+      const currentVar = selectedVariants.find(v => v.id !== targetVarId) || selectedVariants[0];
+      if (currentVar) {
+        handleUpdatePage(page.id, 'variantId', currentVar.id);
+      }
+    }
+
+    const cleanTitle = (page.title || 'Unit').replace(/\s*\([^)]*\)\s*$/, '');
     const newPage = {
       ...page,
       id: `unit_${Date.now()}_${Math.random().toString(36).substring(5)}`,
       variantId: targetVarId,
-      title: `${page.title} (${varLabel})`
+      title: `${cleanTitle} (${varLabel})`
     };
     setUnitPages(prev => [...prev, newPage]);
     setActivePageId(newPage.id);
-    showToast(`📋 Duplicated unit page for ${varLabel}!`);
+    showToast(`📋 Copied unit page for ${varLabel}!`);
   };
 
   // Remove a unit page
@@ -104,6 +117,37 @@ export default function StepUnitSnips({
       }
       return p;
     }));
+  };
+
+  // Change target variant of a unit page with automatic tab sync
+  const handleVariantChange = (pageId, newVariantId) => {
+    handleUpdatePage(pageId, 'variantId', newVariantId);
+
+    const targetVar = variants.find(v => v.id === newVariantId);
+    if (newVariantId === 'all') {
+      showToast('🌐 Unit assigned to All Selected Variants');
+    } else {
+      showToast(`🎯 Unit assigned to ${targetVar?.name || 'Selected Variant'}`);
+    }
+
+    // If currently filtered to a specific variant and user assigns to another variant,
+    // auto-switch the filter tab to the new variant so the card stays in view!
+    if (selectedVariantFilter !== 'all' && newVariantId !== 'all' && selectedVariantFilter !== newVariantId) {
+      setSelectedVariantFilter(newVariantId);
+    }
+  };
+
+  // Switch filter tab and keep active card synced
+  const handleSelectFilterTab = (filterId) => {
+    setSelectedVariantFilter(filterId);
+    const visibleInNewTab = unitPages.filter(p => {
+      if (filterId === 'all') return true;
+      const pVid = p.variantId || (selectedVariants[0]?.id || 'all');
+      return pVid === filterId || pVid === 'all';
+    });
+    if (visibleInNewTab.length > 0 && !visibleInNewTab.some(p => p.id === activePageId)) {
+      setActivePageId(visibleInNewTab[0].id);
+    }
   };
 
   // Handle file drop/upload
@@ -449,14 +493,16 @@ export default function StepUnitSnips({
                       Target Variant:
                     </span>
                     <select
-                      value={page.variantId || 'all'}
+                      value={page.variantId || (selectedVariants[0]?.id || 'all')}
                       onChange={(e) => handleVariantChange(page.id, e.target.value)}
                       className="text-xs font-bold text-amber-950 bg-transparent focus:outline-none cursor-pointer"
                     >
-                      <option value="all">🌐 All Selected Variants</option>
                       {selectedVariants.map(v => (
                         <option key={v.id} value={v.id}>🎯 {v.name}</option>
                       ))}
+                      {selectedVariants.length > 1 && (
+                        <option value="all">🌐 All Selected Variants (Shared)</option>
+                      )}
                     </select>
                   </div>
 

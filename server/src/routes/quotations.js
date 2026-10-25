@@ -345,14 +345,17 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
           }
         }
 
-        if (filePath && fs.existsSync(filePath)) {
+        const hasValidFile = Boolean(filePath && fs.existsSync(filePath));
+        const hasValidNotes = Boolean(meta.notes && String(meta.notes).trim().length > 0);
+
+        if (hasValidFile || hasValidNotes) {
           unitSnips.push({
             id: meta.id,
             variantId: meta.variantId || 'all',
             title: meta.title || 'Unit Breakdown',
             category: meta.category || 'Unit Specification',
             notes: meta.notes || '',
-            filePath
+            filePath: hasValidFile ? filePath : null
           });
         }
       });
@@ -535,15 +538,19 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       date: new Date(),
       selectedVariants: selectedVariantDetails,
       selectedVariantIds: selectedVariantIds,
-      unitPagesMetadata: unitSnips.map(u => ({
-        id: u.id,
-        variantId: u.variantId || 'all',
-        title: u.title,
-        category: u.category,
-        notes: u.notes,
-        previewUrl: `/uploads/snips/${path.basename(u.filePath)}`,
-        filePath: u.filePath
-      })),
+      unitPagesMetadata: unitPagesMetadata.map(meta => {
+        const matchingSnip = unitSnips.find(u => u.id === meta.id);
+        const resolvedPath = matchingSnip?.filePath || (meta.filePath && fs.existsSync(meta.filePath) ? meta.filePath : null);
+        return {
+          id: meta.id,
+          variantId: meta.variantId || 'all',
+          title: meta.title || 'Unit Breakdown',
+          category: meta.category || 'Unit Specification',
+          notes: meta.notes || '',
+          filePath: resolvedPath,
+          previewUrl: resolvedPath ? `/uploads/snips/${path.basename(resolvedPath)}` : (meta.previewUrl || null)
+        };
+      }),
       accessoryPagesMetadata: accessorySnips.map(a => ({
         id: a.id,
         title: a.title,

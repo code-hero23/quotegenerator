@@ -1,3 +1,89 @@
+function escapeXml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Builds an OOXML shape (<p:sp>) for specification remarks / notes
+ */
+function buildNotesShapeXml({ id, name, text, x, y, cx, cy, title = 'UNIT SPECIFICATION REMARKS' }) {
+  if (!text || !text.trim()) return '';
+
+  const cleanText = text.trim();
+  const lines = cleanText.split(/\r?\n/).filter(line => line.trim().length > 0);
+  const paragraphsXml = lines.map(line => `
+    <a:p>
+      <a:pPr algn="l">
+        <a:defRPr sz="1000">
+          <a:solidFill><a:srgbClr val="1E293B"/></a:solidFill>
+          <a:latin typeface="Inter"/>
+        </a:defRPr>
+      </a:pPr>
+      <a:r>
+        <a:rPr lang="en-IN" sz="1000">
+          <a:solidFill><a:srgbClr val="1E293B"/></a:solidFill>
+          <a:latin typeface="Inter"/>
+        </a:rPr>
+        <a:t>${escapeXml(line)}</a:t>
+      </a:r>
+    </a:p>
+  `.trim()).join('');
+
+  return `
+    <p:sp xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+      <p:nvSpPr>
+        <p:cNvPr id="${id}" name="${escapeXml(name)}"/>
+        <p:cNvSpPr txBox="1"/>
+        <p:nvPr/>
+      </p:nvSpPr>
+      <p:spPr>
+        <a:xfrm>
+          <a:off x="${x}" y="${y}"/>
+          <a:ext cx="${cx}" cy="${cy}"/>
+        </a:xfrm>
+        <a:prstGeom prst="roundRect">
+          <a:avLst>
+            <a:gd name="adj" fmla="val 2000"/>
+          </a:avLst>
+        </a:prstGeom>
+        <a:solidFill>
+          <a:srgbClr val="FFFBEB"/>
+        </a:solidFill>
+        <a:ln w="19050">
+          <a:solidFill>
+            <a:srgbClr val="FCD34D"/>
+          </a:solidFill>
+        </a:ln>
+      </p:spPr>
+      <p:txBody>
+        <a:bodyPr vert="horz" lIns="228600" tIns="152400" rIns="228600" bIns="152400" anchor="top" wrap="square"/>
+        <a:lstStyle/>
+        <a:p>
+          <a:pPr algn="l">
+            <a:defRPr sz="900" b="1">
+              <a:solidFill><a:srgbClr val="92400E"/></a:solidFill>
+              <a:latin typeface="Inter"/>
+            </a:defRPr>
+          </a:pPr>
+          <a:r>
+            <a:rPr lang="en-IN" sz="900" b="1">
+              <a:solidFill><a:srgbClr val="92400E"/></a:solidFill>
+              <a:latin typeface="Inter"/>
+            </a:rPr>
+            <a:t>${escapeXml(title)}</a:t>
+          </a:r>
+        </a:p>
+        ${paragraphsXml}
+      </p:txBody>
+    </p:sp>
+  `.trim();
+}
+
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
@@ -82,11 +168,11 @@ function getImageDimensions(buf) {
  * Slide dimensions: 10045700 x 14198600 EMUs (Portrait)
  * Content area: width up to 8800000, height up to 10400000, top 2500000
  */
-function calculateImageBounds(buf) {
+function calculateImageBounds(buf, customMaxHeight = 10400000, customTop = 2500000) {
   const slideWidth = 10045700;
   const maxWidth = 8800000;
-  const maxHeight = 10400000;
-  const contentTop = 2500000;
+  const maxHeight = customMaxHeight;
+  const contentTop = customTop;
 
   const dims = getImageDimensions(buf);
   if (!dims || !dims.width || !dims.height) {
@@ -348,7 +434,14 @@ class PptxEngine {
             uExt = path.extname(uFilePath).replace('.', '') || 'png';
           }
 
-          if (uBuffer) {
+          const uNotes = u.notes && u.notes.trim() ? u.notes.trim() : '';
+          const hasNotes = Boolean(uNotes);
+          const hasImage = Boolean(uBuffer);
+
+          let picXml = '';
+          let notesXml = '';
+
+          if (hasImage) {
             const mediaFileName = `unit_snip_${safeVId}_${uIdx + 1}_${Date.now()}.${uExt}`;
             zip.file(`ppt/media/${mediaFileName}`, uBuffer);
 
@@ -356,29 +449,81 @@ class PptxEngine {
             const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
             unitRelsXml = unitRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
 
-            const bounds = calculateImageBounds(uBuffer);
-            const picXml = `
-              <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-                <p:nvPicPr>
-                  <p:cNvPr id="${12000 + globalUnitCounter}" name="UnitSnip_${safeVId}_${uIdx + 1}"/>
-                  <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
-                  <p:nvPr/>
-                </p:nvPicPr>
-                <p:blipFill>
-                  <a:blip r:embed="${snipRelId}"/>
-                  <a:stretch><a:fillRect/></a:stretch>
-                </p:blipFill>
-                <p:spPr>
-                  <a:xfrm>
-                    <a:off x="${bounds.x}" y="${bounds.y}"/>
-                    <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
-                  </a:xfrm>
-                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-                </p:spPr>
-              </p:pic>
-            `.trim();
-            unitXml = unitXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+            if (hasNotes) {
+              const notesHeight = 1500000;
+              const notesY = 12900000 - notesHeight;
+              const availImgHeight = notesY - 2500000 - 150000;
+              const bounds = calculateImageBounds(uBuffer, availImgHeight, 2500000);
+
+              picXml = `
+                <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                  <p:nvPicPr>
+                    <p:cNvPr id="${12000 + globalUnitCounter}" name="UnitSnip_${safeVId}_${uIdx + 1}"/>
+                    <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                    <p:nvPr/>
+                  </p:nvPicPr>
+                  <p:blipFill>
+                    <a:blip r:embed="${snipRelId}"/>
+                    <a:stretch><a:fillRect/></a:stretch>
+                  </p:blipFill>
+                  <p:spPr>
+                    <a:xfrm>
+                      <a:off x="${bounds.x}" y="${bounds.y}"/>
+                      <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
+                    </a:xfrm>
+                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                  </p:spPr>
+                </p:pic>
+              `.trim();
+
+              notesXml = buildNotesShapeXml({
+                id: 13000 + globalUnitCounter,
+                name: `UnitNotes_${safeVId}_${uIdx + 1}`,
+                text: uNotes,
+                x: 622850,
+                y: notesY,
+                cx: 8800000,
+                cy: notesHeight,
+                title: `SPECIFICATION REMARKS: ${u.category || u.title || 'Unit'}`
+              });
+            } else {
+              const bounds = calculateImageBounds(uBuffer, 10400000, 2500000);
+              picXml = `
+                <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                  <p:nvPicPr>
+                    <p:cNvPr id="${12000 + globalUnitCounter}" name="UnitSnip_${safeVId}_${uIdx + 1}"/>
+                    <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                    <p:nvPr/>
+                  </p:nvPicPr>
+                  <p:blipFill>
+                    <a:blip r:embed="${snipRelId}"/>
+                    <a:stretch><a:fillRect/></a:stretch>
+                  </p:blipFill>
+                  <p:spPr>
+                    <a:xfrm>
+                      <a:off x="${bounds.x}" y="${bounds.y}"/>
+                      <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
+                    </a:xfrm>
+                    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                  </p:spPr>
+                </p:pic>
+              `.trim();
+            }
+          } else if (hasNotes) {
+            notesXml = buildNotesShapeXml({
+              id: 13000 + globalUnitCounter,
+              name: `UnitNotes_${safeVId}_${uIdx + 1}`,
+              text: uNotes,
+              x: 622850,
+              y: 3500000,
+              cx: 8800000,
+              cy: 5000000,
+              title: `SPECIFICATION REMARKS: ${u.category || u.title || 'Unit'}`
+            });
           }
+
+          if (picXml) unitXml = unitXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+          if (notesXml) unitXml = unitXml.replace('</p:spTree>', `${notesXml}</p:spTree>`);
 
           zip.file(unitFullZipPath, unitXml);
           zip.file(unitSlideRelsZipPath, unitRelsXml);
@@ -442,7 +587,14 @@ class PptxEngine {
           aExt = path.extname(aFilePath).replace('.', '') || 'png';
         }
 
-        if (aBuffer) {
+        const aNotes = a.notes && a.notes.trim() ? a.notes.trim() : '';
+        const hasNotes = Boolean(aNotes);
+        const hasImage = Boolean(aBuffer);
+
+        let picXml = '';
+        let notesXml = '';
+
+        if (hasImage) {
           const mediaFileName = `acc_snip_${aIdx + 1}_${Date.now()}.${aExt}`;
           zip.file(`ppt/media/${mediaFileName}`, aBuffer);
 
@@ -450,29 +602,81 @@ class PptxEngine {
           const newRel = `<Relationship Id="${snipRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${mediaFileName}"/>`;
           accRelsXml = accRelsXml.replace('</Relationships>', `${newRel}</Relationships>`);
 
-          const bounds = calculateImageBounds(aBuffer);
-          const picXml = `
-            <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-              <p:nvPicPr>
-                <p:cNvPr id="${15000 + aIdx}" name="AccessorySnip_${aIdx + 1}"/>
-                <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
-                <p:nvPr/>
-              </p:nvPicPr>
-              <p:blipFill>
-                <a:blip r:embed="${snipRelId}"/>
-                <a:stretch><a:fillRect/></a:stretch>
-              </p:blipFill>
-              <p:spPr>
-                <a:xfrm>
-                  <a:off x="${bounds.x}" y="${bounds.y}"/>
-                  <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
-                </a:xfrm>
-                <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-              </p:spPr>
-            </p:pic>
-          `.trim();
-          accXml = accXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+          if (hasNotes) {
+            const notesHeight = 1500000;
+            const notesY = 12900000 - notesHeight;
+            const availImgHeight = notesY - 2500000 - 150000;
+            const bounds = calculateImageBounds(aBuffer, availImgHeight, 2500000);
+
+            picXml = `
+              <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                <p:nvPicPr>
+                  <p:cNvPr id="${15000 + aIdx}" name="AccessorySnip_${aIdx + 1}"/>
+                  <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                  <p:nvPr/>
+                </p:nvPicPr>
+                <p:blipFill>
+                  <a:blip r:embed="${snipRelId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </p:blipFill>
+                <p:spPr>
+                  <a:xfrm>
+                    <a:off x="${bounds.x}" y="${bounds.y}"/>
+                    <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </p:spPr>
+              </p:pic>
+            `.trim();
+
+            notesXml = buildNotesShapeXml({
+              id: 16000 + aIdx,
+              name: `AccessoryNotes_${aIdx + 1}`,
+              text: aNotes,
+              x: 622850,
+              y: notesY,
+              cx: 8800000,
+              cy: notesHeight,
+              title: `HARDWARE SPECIFICATION REMARKS: ${a.category || a.title || 'Accessory'}`
+            });
+          } else {
+            const bounds = calculateImageBounds(aBuffer, 10400000, 2500000);
+            picXml = `
+              <p:pic xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                <p:nvPicPr>
+                  <p:cNvPr id="${15000 + aIdx}" name="AccessorySnip_${aIdx + 1}"/>
+                  <p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>
+                  <p:nvPr/>
+                </p:nvPicPr>
+                <p:blipFill>
+                  <a:blip r:embed="${snipRelId}"/>
+                  <a:stretch><a:fillRect/></a:stretch>
+                </p:blipFill>
+                <p:spPr>
+                  <a:xfrm>
+                    <a:off x="${bounds.x}" y="${bounds.y}"/>
+                    <a:ext cx="${bounds.cx}" cy="${bounds.cy}"/>
+                  </a:xfrm>
+                  <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+                </p:spPr>
+              </p:pic>
+            `.trim();
+          }
+        } else if (hasNotes) {
+          notesXml = buildNotesShapeXml({
+            id: 16000 + aIdx,
+            name: `AccessoryNotes_${aIdx + 1}`,
+            text: aNotes,
+            x: 622850,
+            y: 3500000,
+            cx: 8800000,
+            cy: 5000000,
+            title: `HARDWARE SPECIFICATION REMARKS: ${a.category || a.title || 'Accessory'}`
+          });
         }
+
+        if (picXml) accXml = accXml.replace('</p:spTree>', `${picXml}</p:spTree>`);
+        if (notesXml) accXml = accXml.replace('</p:spTree>', `${notesXml}</p:spTree>`);
 
         zip.file(accFullZipPath, accXml);
         zip.file(accSlideRelsZipPath, accRelsXml);

@@ -325,7 +325,7 @@ export default function StepUnitSnips({
             </span>
             <button
               type="button"
-              onClick={() => setSelectedVariantFilter('all')}
+              onClick={() => handleSelectFilterTab('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 selectedVariantFilter === 'all'
                   ? 'bg-amber-500 text-white shadow-xs'
@@ -343,7 +343,7 @@ export default function StepUnitSnips({
                 <button
                   key={v.id}
                   type="button"
-                  onClick={() => setSelectedVariantFilter(v.id)}
+                  onClick={() => handleSelectFilterTab(v.id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                     selectedVariantFilter === v.id
                       ? 'bg-amber-500 text-white shadow-xs'
@@ -374,13 +374,45 @@ export default function StepUnitSnips({
 
       {/* List of Unit Pages */}
       <div className="space-y-5">
-        {unitPages
-          .filter(page => {
+        {(() => {
+          const displayedPages = unitPages.filter(page => {
             if (selectedVariantFilter === 'all') return true;
             const pVid = page.variantId || 'all';
             return pVid === selectedVariantFilter || pVid === 'all';
-          })
-          .map((page, index) => {
+          });
+
+          if (displayedPages.length === 0) {
+            const activeVarObj = selectedVariants.find(v => v.id === selectedVariantFilter);
+            return (
+              <div className="p-8 text-center border-2 border-dashed border-amber-200 rounded-2xl bg-amber-50/20 space-y-3">
+                <Layers className="w-8 h-8 text-amber-500 mx-auto opacity-70" />
+                <p className="text-sm font-bold text-slate-800">
+                  No unit pages assigned to {activeVarObj ? activeVarObj.name : 'this variant'} yet.
+                </p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  Add a unit breakdown page specifically for {activeVarObj ? activeVarObj.name : 'this variant'} or switch to view all units.
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleAddPage}
+                    className="btn-gold text-xs px-4 py-2 font-bold rounded-lg cursor-pointer shadow-xs"
+                  >
+                    + Add Unit Page for {activeVarObj ? activeVarObj.name : 'Variant'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectFilterTab('all')}
+                    className="btn-secondary text-xs px-4 py-2 font-semibold rounded-lg cursor-pointer bg-white"
+                  >
+                    View All Units ({unitPages.length})
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          return displayedPages.map((page, index) => {
           const isAllVariants = !page.variantId || page.variantId === 'all';
           const assignedVariant = !isAllVariants ? variants.find(v => v.id === page.variantId) : null;
           return (
@@ -411,26 +443,17 @@ export default function StepUnitSnips({
                     />
                   </div>
 
-                  {/* Target Variant Badge */}
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                    isAllVariants 
-                      ? 'bg-amber-50 text-amber-900 border-amber-200' 
-                      : 'bg-indigo-50 text-indigo-900 border-indigo-200'
-                  }`}>
-                    {isAllVariants ? '🌟 All Variants' : `🎯 ${assignedVariant?.name || 'Assigned Variant'}`}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {/* Variant Assignment Selector */}
-                  <div className="flex items-center gap-1.5 bg-amber-50/80 border border-amber-200 rounded-lg px-2.5 py-1">
-                    <span className="text-[10px] font-bold text-amber-800 uppercase">Target Variant:</span>
+                  {/* Unified Target Variant Selector */}
+                  <div className="flex items-center gap-1.5 bg-amber-50/90 hover:bg-amber-100/70 border border-amber-300 rounded-lg px-2.5 py-1.5 transition-all shadow-2xs">
+                    <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wide">
+                      Target Variant:
+                    </span>
                     <select
                       value={page.variantId || 'all'}
-                      onChange={(e) => handleUpdatePage(page.id, 'variantId', e.target.value)}
-                      className="text-xs font-bold text-slate-800 bg-transparent focus:outline-none cursor-pointer"
+                      onChange={(e) => handleVariantChange(page.id, e.target.value)}
+                      className="text-xs font-bold text-amber-950 bg-transparent focus:outline-none cursor-pointer"
                     >
-                      <option value="all">🌟 All Selected Variants</option>
+                      <option value="all">🌐 All Selected Variants</option>
                       {selectedVariants.map(v => (
                         <option key={v.id} value={v.id}>🎯 {v.name}</option>
                       ))}
@@ -504,7 +527,7 @@ export default function StepUnitSnips({
                           {page.file ? page.file.name : (page.title ? `${page.title} Snip` : 'Saved Unit Snip')}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          {page.file ? `${(page.file.size / 1024).toFixed(1)} KB • ` : ''}Will be inserted after {page.variantId && page.variantId !== 'all' ? (variants.find(v => v.id === page.variantId)?.name || 'variant') : 'each variant'} specs
+                          {page.file ? `${(page.file.size / 1024).toFixed(1)} KB • ` : ''}{page.variantId && page.variantId !== 'all' ? `Will be inserted after ${variants.find(v => v.id === page.variantId)?.name || 'variant'} specs` : 'Will be inserted across each selected variant'} specs
                         </p>
 
                         <div className="flex items-center gap-2 pt-2">
@@ -617,7 +640,8 @@ export default function StepUnitSnips({
               </div>
             </div>
           );
-        })}
+        });
+      })()}
 
         {/* Large Add Page CTA Card */}
         <button

@@ -210,39 +210,93 @@ export default function StepReviewGenerate({
           </div>
         </div>
 
-        {/* Unit Breakdown Snips Overview */}
+        {/* Unit Breakdown Snips & Remarks Overview */}
         {unitPages && unitPages.length > 0 && (
-          <div className="md:col-span-3 glass-panel p-4 flex flex-wrap items-center justify-between gap-3 bg-amber-50/40 border-amber-200">
-            <div className="flex items-center gap-2.5">
-              <span className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-amber-500/30">
-                {unitPages.length}
-              </span>
-              <div>
-                <span className="text-xs font-bold text-slate-800">
-                  Unit Breakdown Pages Configured: <strong className="text-amber-800">{unitPages.length} Unit Page(s)</strong>
+          <div className="md:col-span-3 glass-panel p-5 bg-gradient-to-r from-amber-50/50 via-white to-amber-50/20 border-amber-200/80 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-amber-200/60">
+              <div className="flex items-center gap-2.5">
+                <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-sm shadow-amber-500/30">
+                  {unitPages.length}
                 </span>
-                <span className="text-[11px] text-slate-500 block">
-                  {unitPages.filter(u => u.file || u.previewUrl || u.filePath).length} snip image(s) attached
-                </span>
+                <div>
+                  <h5 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-amber-600" />
+                    Unit Breakdown Pages &amp; Specifications ({unitPages.length} Configured)
+                  </h5>
+                  <span className="text-[11px] text-slate-500 block">
+                    {unitPages.filter(u => u.file || u.previewUrl || u.filePath).length} snip image(s) attached • Included before quotation slides
+                  </span>
+                </div>
               </div>
+
+              {onEditStep && (
+                <button
+                  type="button"
+                  onClick={() => onEditStep(3)}
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Edit Unit Remarks &amp; Snips</span>
+                </button>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {unitPages.map((u, i) => {
                 const isAttached = Boolean(u.file || u.previewUrl || u.filePath);
+                const assignedVar = u.variantId && u.variantId !== 'all' 
+                  ? variants.find(v => v.id === u.variantId) 
+                  : null;
+
                 return (
-                  <span 
-                    key={u.id || i} 
-                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold border flex items-center gap-1 ${
-                      isAttached 
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                        : 'bg-white text-slate-600 border-slate-200'
-                    }`}
+                  <div 
+                    key={u.id || i}
+                    className="p-3.5 rounded-xl border border-slate-200 bg-white/90 shadow-2xs flex flex-col justify-between space-y-2.5"
                   >
-                    <span>#{i + 1}</span>
-                    <span className="truncate max-w-[120px]">{u.title || u.category}</span>
-                    {isAttached && <span className="text-emerald-600 font-bold">✓</span>}
-                  </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-900 truncate">
+                          #{i + 1} {u.title || u.category || `Unit ${i + 1}`}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+                          assignedVar
+                            ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
+                            : 'bg-amber-50 text-amber-900 border-amber-200'
+                        }`}>
+                          {assignedVar ? `🎯 ${assignedVar.name}` : '🌐 All Variants'}
+                        </span>
+                      </div>
+
+                      {/* Attached Snip Status */}
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+                        {isAttached ? (
+                          <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Snip Image Attached</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">No image attached (Text slide only)</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Unit Specification Remarks */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="text-[10px] font-extrabold text-amber-900 uppercase tracking-wide flex items-center gap-1 mb-1">
+                        <FileText className="w-3 h-3 text-amber-700" />
+                        <span>Specification Remarks:</span>
+                      </span>
+                      {u.notes && u.notes.trim() ? (
+                        <p className="text-[11px] text-slate-800 bg-amber-50/60 p-2 rounded-lg border border-amber-200/80 font-mono whitespace-pre-line leading-relaxed">
+                          {u.notes.trim()}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 italic">
+                          None specified (Optional)
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>

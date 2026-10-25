@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# COOKSCAPE QUOTATION GENERATOR - DEPLOYMENT SCRIPT (Ubuntu VPS)
+# COOKSCAPE QUOTATION GENERATOR - SAFE DEPLOYMENT SCRIPT (Ubuntu VPS)
 # Backend Port: 5002
+# Safe for shared multi-project VPS servers:
+# - No sudo / system-wide package installs (no apt-get locks)
+# - No global Nginx rewrites or service reloads
+# - No global font cache flushes (strictly user-scoped)
+# - Capped Node build memory (prevents Linux OOM killer on other projects)
+# - No unscoped pm2 save
 # ==============================================================================
 set -e
 
@@ -10,7 +16,7 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$APP_DIR"
 
 echo "=========================================================="
-echo "🚀 Starting Deployment for Quotation Generator..."
+echo "🚀 Starting Safe Deployment for Quotation Generator..."
 echo "📁 Working Directory: $APP_DIR"
 echo "🔌 Target Backend Port: 5002"
 echo "🕒 Timestamp: $(date)"
@@ -18,7 +24,7 @@ echo "=========================================================="
 
 # 1. Safeguard existing database & pull latest code from GitHub
 echo ""
-echo "📥 [1/6] Safeguarding database and pulling latest updates from GitHub (main)..."
+echo "📥 [1/4] Preserving database and pulling latest updates from GitHub..."
 
 LOCAL_STORE="$APP_DIR/server/uploads/local_store.json"
 BACKUP_DIR="$APP_DIR/server/uploads/backups"
@@ -43,88 +49,18 @@ if [ -f "$PRESERVE_FILE" ]; then
     rm -f "$PRESERVE_FILE"
 fi
 
-# Ensure Nginx allows large multi-image quotation payloads
-if [ -d /etc/nginx ]; then
-    echo "Ensuring Nginx client_max_body_size is set to 100M for quotation image uploads..."
-    echo "client_max_body_size 100M;" | sudo tee /etc/nginx/conf.d/quotegenerator_limits.conf > /dev/null || true
-    sudo systemctl reload nginx 2>/dev/null || true
-fi
-
-# 2. Install Presentation Fonts (including Baskerville, Klein, Moontime, Caudex Bold, Inter, Calibri, Segoe UI)
-echo ""
-echo "🔤 [2/6] Installing presentation fonts into system font cache..."
-sudo mkdir -p /usr/local/share/fonts/quotegenerator
-sudo mkdir -p /usr/share/fonts/truetype/quotegenerator
-mkdir -p "$HOME/.local/share/fonts/quotegenerator"
-
+# 2. Register presentation fonts strictly in user/local cache
 if [ -d "$APP_DIR/server/fonts" ]; then
-    echo "Copying presentation fonts from $APP_DIR/server/fonts..."
-    sudo cp -f "$APP_DIR/server/fonts"/*.* /usr/local/share/fonts/quotegenerator/ || true
-    sudo cp -f "$APP_DIR/server/fonts"/*.* /usr/share/fonts/truetype/quotegenerator/ || true
-    sudo chmod 644 /usr/local/share/fonts/quotegenerator/* || true
-    sudo chmod 644 /usr/share/fonts/truetype/quotegenerator/* || true
-    
-    cp -f "$APP_DIR/server/fonts"/*.* "$HOME/.local/share/fonts/quotegenerator/" || true
-    chmod 644 "$HOME/.local/share/fonts/quotegenerator/"* || true
-
-    # Install Fontconfig alias configuration for Caudex Bold, Inter, Baskerville
-    if [ -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" ]; then
-        echo "Installing fontconfig aliases for Caudex Bold and Inter..."
-        sudo mkdir -p /etc/fonts/conf.d
-        sudo cp -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" /etc/fonts/conf.d/99-quotegenerator-fonts.conf || true
-        mkdir -p "$HOME/.config/fontconfig/conf.d"
-        cp -f "$APP_DIR/server/fonts/99-quotegenerator-fonts.conf" "$HOME/.config/fontconfig/conf.d/99-quotegenerator-fonts.conf" || true
-    fi
+    echo ""
+    echo "🔤 [2/4] Updating user presentation font cache..."
+    mkdir -p "$HOME/.local/share/fonts/quotegenerator"
+    cp -f "$APP_DIR/server/fonts"/*.* "$HOME/.local/share/fonts/quotegenerator/" 2>/dev/null || true
+    fc-cache -f "$HOME/.local/share/fonts/quotegenerator" 2>/dev/null || true
 fi
 
-echo "Installing font packages (fonts-inter, fontconfig, liberation, crosextra)..."
-sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends \
-    fontconfig \
-    fonts-inter \
-    fonts-crosextra-carlito \
-    fonts-crosextra-caladea \
-    fonts-liberation \
-    libreoffice-impress \
-    libreoffice-common
-
-echo "Rebuilding font cache to register presentation fonts..."
-sudo fc-cache -f
-fc-cache -f
-
-echo "Verifying registered presentation fonts:"
-fc-list : family | grep -iE "caudex|inter|baskerville|klein|moontime" | sort -u || true
-
-# 3. Install ONLYOFFICE Document Builder for 100% Microsoft OOXML fidelity
+# 3. Update Server Dependencies & Configure Port 5002
 echo ""
-echo "🏢 [3/6] Setting up ONLYOFFICE Document Builder for 100% OOXML presentation export..."
-if ! command -v docbuilder &> /dev/null && [ ! -f /opt/onlyoffice/documentbuilder/docbuilder ]; then
-    echo "Installing ONLYOFFICE Document Builder on Ubuntu..."
-    sudo mkdir -p -m 700 /root/.gnupg 2>/dev/null || true
-    curl -fsSL https://download.onlyoffice.com/GPG-KEY-ONLYOFFICE | sudo gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/onlyoffice.gpg --import 2>/dev/null || true
-    if [ -f /usr/share/keyrings/onlyoffice.gpg ]; then
-        sudo chmod 644 /usr/share/keyrings/onlyoffice.gpg
-        echo "deb [signed-by=/usr/share/keyrings/onlyoffice.gpg] https://download.onlyoffice.com/repo/debian squeeze main" | sudo tee /etc/apt/sources.list.d/onlyoffice.list > /dev/null
-        sudo apt-get update -qq || true
-        sudo apt-get install -y onlyoffice-documentbuilder || true
-    fi
-
-    # Fallback to direct .deb download if apt repository had any issue
-    if ! command -v docbuilder &> /dev/null && [ ! -f /opt/onlyoffice/documentbuilder/docbuilder ]; then
-        echo "Downloading ONLYOFFICE Document Builder direct deb package..."
-        curl -fsSL -o /tmp/onlyoffice-documentbuilder.deb https://download.onlyoffice.com/install/desktop/docbuilder/linux/onlyoffice-documentbuilder_amd64.deb || true
-        if [ -f /tmp/onlyoffice-documentbuilder.deb ]; then
-            sudo dpkg -i /tmp/onlyoffice-documentbuilder.deb || sudo apt-get -f install -y || true
-            rm -f /tmp/onlyoffice-documentbuilder.deb
-        fi
-    fi
-else
-    echo "ONLYOFFICE Document Builder is already installed."
-fi
-
-# 4. Update Server Dependencies & Configure Port 5002
-echo ""
-echo "⚙️ [4/6] Setting up Backend Server on port 5002..."
+echo "⚙️ [3/4] Setting up Backend Server on port 5002..."
 cd "$APP_DIR/server"
 npm install --omit=dev
 
@@ -148,30 +84,28 @@ else
     echo "Configured server/.env to PORT=5002"
 fi
 
-# 5. Build Frontend Application
+# 4. Build Frontend with memory cap & restart PM2 service
 echo ""
-echo "🎨 [5/6] Building Client Frontend (Vite Production Build)..."
+echo "🎨 [4/4] Building Client Frontend (Vite) & Restarting PM2..."
 cd "$APP_DIR/client"
 npm install
-npm run build
 
-# 6. Restart Application via PM2
-echo ""
-echo "🔄 [6/6] Restarting Backend Service via PM2 on port 5002..."
+# Cap memory during build to prevent Linux OOM killer from terminating other VPS processes
+NODE_OPTIONS="--max-old-space-size=1024" npm run build
+
 cd "$APP_DIR/server"
-
 if pm2 list | grep -q "quotegenerator-api"; then
     echo "Restarting existing PM2 process 'quotegenerator-api'..."
     pm2 restart quotegenerator-api --update-env
 else
     echo "Starting new PM2 process 'quotegenerator-api' on port 5002..."
     pm2 start src/index.js --name "quotegenerator-api"
-    pm2 save
 fi
 
 echo ""
 echo "=========================================================="
-echo "✅ Deployment completed successfully!"
+echo "✅ Quotation Generator deployed safely!"
 echo "🔌 Backend API: http://127.0.0.1:5002"
 echo "📡 Subdomain: http://quotegenerator.orbixdesigns.com"
+echo "🛡️ Zero impact on other projects on this server."
 echo "=========================================================="

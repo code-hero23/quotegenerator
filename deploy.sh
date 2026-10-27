@@ -84,6 +84,16 @@ else
     echo "Configured server/.env to PORT=5002"
 fi
 
+# Generate Prisma Client & sync schema if PostgreSQL is configured
+if [ -f "prisma/schema.prisma" ]; then
+    echo "📦 Generating Prisma Client..."
+    npx prisma generate
+    if grep -q "^DATABASE_URL=" .env 2>/dev/null; then
+        echo "🐘 Syncing PostgreSQL schema safely..."
+        npx prisma db push --skip-generate || true
+    fi
+fi
+
 # 4. Build Frontend with memory cap & restart PM2 service
 echo ""
 echo "🎨 [4/4] Building Client Frontend (Vite) & Restarting PM2..."

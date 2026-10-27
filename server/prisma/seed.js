@@ -1,8 +1,10 @@
 const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
+const path = require('path');
 
 const prisma = new PrismaClient();
 
-const variants = [
+const defaultVariants = [
   {
     id: 'var-ll-elite',
     name: 'LL ELITE',
@@ -90,39 +92,120 @@ const variants = [
   }
 ];
 
+const defaultUsers = [
+  {
+    id: 'user-admin-1',
+    username: 'admin',
+    password: 'admin123',
+    name: 'Administrator',
+    contactNumber: '94444 88888',
+    email: 'admin@cookscape.in',
+    role: 'admin',
+    title: 'System Administrator'
+  },
+  {
+    id: 'user-bh-1',
+    username: 'suresh_bh',
+    password: 'bh123',
+    name: 'Suresh Kumar',
+    contactNumber: '98400 11223',
+    email: 'suresh.bh@cookscape.in',
+    role: 'bh',
+    title: 'Business Head'
+  },
+  {
+    id: 'user-sales-rep-1',
+    username: 'abishek',
+    password: 'arch123',
+    name: 'Mr. Abishek',
+    contactNumber: '93611 84787',
+    email: 'designs.cookscape@gmail.com',
+    role: 'fa',
+    title: 'Feasibility Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
+  },
+  {
+    id: 'user-arch-abirami',
+    username: 'abirami',
+    password: 'arch123',
+    name: 'Abirami.K',
+    contactNumber: '94444 88888',
+    email: 'abirami@cookscape.in',
+    role: 'fa',
+    title: 'Feasibility Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
+  },
+  {
+    id: 'user-arch-aravindan',
+    username: 'aravindan',
+    password: 'arch123',
+    name: 'Aravindan',
+    contactNumber: '7418414780',
+    email: 'aravind@cookscape.in',
+    role: 'la',
+    title: 'Lead Architect',
+    bhId: 'user-bh-1',
+    bhName: 'Suresh Kumar'
+  }
+];
+
+const defaultClients = [
+  {
+    id: 'client-sample-1',
+    name: 'Dr. Siddharth & Meera Menon',
+    contactNumber: '98401 23456',
+    location: 'Skyline Waterfront Penthouse, ECR',
+    email: 'client@sample.com'
+  },
+  {
+    id: 'client-aravindan-1',
+    name: 'Mr. Aravindan',
+    contactNumber: '7418414780',
+    location: 'Individual Villa Adyar',
+    email: 'webapp.cookscape@gmail.com'
+  }
+];
+
 async function seed() {
-  console.log('--- Seeding Database ---');
+  console.log('--- Seeding PostgreSQL Database ---');
 
-  // Seed Sales Rep
-  const rep = await prisma.user.upsert({
-    where: { id: 'user-sales-rep-1' },
-    update: {},
-    create: {
-      id: 'user-sales-rep-1',
-      name: 'Mr. Abishek',
-      contactNumber: '93611 84787',
-      email: 'designs.cookscape@gmail.com',
-      role: 'Senior Design Consultant'
-    }
-  });
-  console.log(`👤 Seeded User: ${rep.name}`);
+  // 1. Seed Users
+  for (const u of defaultUsers) {
+    await prisma.user.upsert({
+      where: { username: u.username },
+      update: {
+        name: u.name,
+        contactNumber: u.contactNumber,
+        email: u.email,
+        role: u.role,
+        title: u.title,
+        bhId: u.bhId,
+        bhName: u.bhName
+      },
+      create: u
+    });
+    console.log(`👤 Seeded User: ${u.name} (${u.username} / role: ${u.role})`);
+  }
 
-  // Seed Client
-  const client = await prisma.client.upsert({
-    where: { id: 'client-aravindan-1' },
-    update: {},
-    create: {
-      id: 'client-aravindan-1',
-      name: 'Mr. Aravindan',
-      contactNumber: '7418414780',
-      location: 'Individual Villa Adyar',
-      email: 'webapp.cookscape@gmail.com'
-    }
-  });
-  console.log(`🏢 Seeded Client: ${client.name}`);
+  // 2. Seed Clients
+  for (const c of defaultClients) {
+    await prisma.client.upsert({
+      where: { id: c.id },
+      update: {
+        name: c.name,
+        contactNumber: c.contactNumber,
+        location: c.location,
+        email: c.email
+      },
+      create: c
+    });
+    console.log(`🏢 Seeded Client: ${c.name}`);
+  }
 
-  // Seed Variants
-  for (const v of variants) {
+  // 3. Seed Variants
+  for (const v of defaultVariants) {
     await prisma.variant.upsert({
       where: { id: v.id },
       update: {
@@ -134,21 +217,92 @@ async function seed() {
         slideIndices: v.slideIndices,
         isDefault: v.isDefault
       },
-      create: {
-        id: v.id,
-        name: v.name,
-        category: v.category,
-        description: v.description,
-        price: v.price,
-        specs: v.specs,
-        slideIndices: v.slideIndices,
-        isDefault: v.isDefault
-      }
+      create: v
     });
     console.log(`📦 Seeded Variant: ${v.name}`);
   }
 
-  console.log('✅ Seeding complete!');
+  // 4. Migrate any local store quotations if local_store.json exists
+  const localStorePath = path.resolve(__dirname, '../uploads/local_store.json');
+  if (fs.existsSync(localStorePath)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(localStorePath, 'utf8'));
+      if (Array.isArray(data.quotations) && data.quotations.length > 0) {
+        console.log(`📥 Migrating ${data.quotations.length} quotations from local store...`);
+        for (const q of data.quotations) {
+          if (!q.quotationNumber) continue;
+
+          // Ensure client exists
+          let cId = q.clientId;
+          if (cId) {
+            const clientExists = await prisma.client.findUnique({ where: { id: cId } });
+            if (!clientExists) {
+              const clientInfo = q.clientInfo || q.client || {};
+              const createdClient = await prisma.client.create({
+                data: {
+                  id: cId,
+                  name: clientInfo.name || 'Valued Client',
+                  contactNumber: clientInfo.contact || clientInfo.contactNumber || 'N/A',
+                  location: clientInfo.location || 'N/A',
+                  email: clientInfo.email || null
+                }
+              });
+              cId = createdClient.id;
+            }
+          } else {
+            // Find or create default client
+            const firstClient = await prisma.client.findFirst();
+            cId = firstClient ? firstClient.id : defaultClients[0].id;
+          }
+
+          // Check user exists if userId given
+          let uId = q.userId;
+          if (uId) {
+            const userExists = await prisma.user.findFirst({
+              where: {
+                OR: [{ id: uId }, { username: uId }]
+              }
+            });
+            uId = userExists ? userExists.id : null;
+          }
+
+          await prisma.quotation.upsert({
+            where: { quotationNumber: q.quotationNumber },
+            update: {},
+            create: {
+              id: q.id || `quote-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              quotationNumber: q.quotationNumber,
+              clientId: cId,
+              userId: uId,
+              architect: q.architect || q.repInfo?.name || 'Cookscape Representative',
+              bhId: q.bhId || null,
+              bhName: q.bhName || null,
+              repInfo: q.repInfo || null,
+              clientInfo: q.clientInfo || null,
+              selectedVariants: q.selectedVariants || [],
+              selectedVariantIds: q.selectedVariantIds || null,
+              unitPagesMetadata: q.unitPagesMetadata || null,
+              accessoryPagesMetadata: q.accessoryPagesMetadata || null,
+              snipsMetadata: q.snipsMetadata || null,
+              quotationPagesMetadata: q.quotationPagesMetadata || null,
+              filePath: q.filePath || '',
+              fileSize: q.fileSize || 0,
+              downloadUrl: q.downloadUrl || null,
+              pdfPath: q.pdfPath || null,
+              pdfFileSize: q.pdfFileSize || 0,
+              pdfDownloadUrl: q.pdfDownloadUrl || null,
+              date: q.date ? new Date(q.date) : new Date()
+            }
+          });
+        }
+        console.log(`✅ Quotation records migrated to PostgreSQL successfully!`);
+      }
+    } catch (e) {
+      console.warn('Notice: Local store migration warning:', e.message);
+    }
+  }
+
+  console.log('✅ PostgreSQL database seeding completed successfully!');
 }
 
 seed()

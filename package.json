@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "description": "PERN stack quotation generator with PowerPoint Template Subtraction Architecture",
   "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run start:server\" \"npm run start:client\"",
+    "start": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run start:server\" \"npm run start:client\"",
     "start:server": "cd server && npm start",
     "start:client": "cd client && npm run dev",
     "build:client": "cd client && npm run build",
     "test:pptx": "cd server && npm run test:pptx"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
   }
 }

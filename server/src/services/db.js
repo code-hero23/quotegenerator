@@ -1,5 +1,18 @@
 const fs = require('fs');
 const path = require('path');
+const { PrismaClient } = require('@prisma/client');
+
+// Initialize Prisma Client
+let prisma = null;
+let isPostgresConnected = false;
+
+if (process.env.DATABASE_URL) {
+  try {
+    prisma = new PrismaClient();
+  } catch (err) {
+    console.warn('⚠️ Could not initialize PrismaClient instance:', err.message);
+  }
+}
 
 // Initial seed dataset without pricing
 const defaultVariants = [
@@ -176,7 +189,7 @@ const defaultClients = [
   }
 ];
 
-// Persistent file-based store
+// Persistent file-based store (fallback)
 const storagePath = path.resolve(__dirname, '../../uploads/local_store.json');
 
 function loadLocalStore() {
@@ -184,138 +197,6 @@ function loadLocalStore() {
     try {
       const parsed = JSON.parse(fs.readFileSync(storagePath, 'utf-8'));
       if (parsed && Array.isArray(parsed.variants)) {
-        let updated = false;
-
-        // Strip prices from all variants if present and normalize variant names
-        parsed.variants.forEach(v => {
-          if ('price' in v) {
-            delete v.price;
-            updated = true;
-          }
-          if (v.id === 'var-surabhi-ll-elite') {
-            v.id = 'var-ll-elite';
-            updated = true;
-          }
-          if (
-            v.name === 'SURABHI - LL ELITE' ||
-            v.name === 'SURABHI  - LL ELITE' ||
-            v.name === 'LL-ELITE' ||
-            (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
-          ) {
-            v.name = 'LL ELITE';
-            updated = true;
-          }
-        });
-
-        // Ensure saved quotations also display 'LL ELITE' and 'var-ll-elite'
-        if (Array.isArray(parsed.quotations)) {
-          parsed.quotations.forEach(q => {
-            if (Array.isArray(q.selectedVariants)) {
-              q.selectedVariants.forEach(v => {
-                if (v.id === 'var-surabhi-ll-elite') {
-                  v.id = 'var-ll-elite';
-                  updated = true;
-                }
-                if (
-                  v.name === 'SURABHI - LL ELITE' ||
-                  v.name === 'SURABHI  - LL ELITE' ||
-                  v.name === 'LL-ELITE' ||
-                  (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
-                ) {
-                  v.name = 'LL ELITE';
-                  updated = true;
-                }
-              });
-            }
-          });
-        }
-
-        // Ensure users array exists with admin and proper roles
-        if (!Array.isArray(parsed.users) || parsed.users.length === 0) {
-          parsed.users = [...defaultUsers];
-          updated = true;
-        } else {
-          // Ensure admin user exists
-          const hasAdmin = parsed.users.some(u => u.role === 'admin' || u.username === 'admin');
-          if (!hasAdmin) {
-            parsed.users.unshift(defaultUsers[0]);
-            updated = true;
-          }
-
-          // Ensure default Business Head exists so user can immediately test BH workflow
-          const hasBh = parsed.users.some(u => u.role === 'bh' || u.username === 'suresh_bh');
-          if (!hasBh) {
-            const bhUser = defaultUsers.find(u => u.role === 'bh') || {
-              id: 'user-bh-1',
-              username: 'suresh_bh',
-              password: 'bh123',
-              name: 'Suresh Kumar',
-              contactNumber: '98400 11223',
-              email: 'suresh.bh@cookscape.in',
-              role: 'bh',
-              title: 'Business Head'
-            };
-            parsed.users.push(bhUser);
-            updated = true;
-          }
-
-          const defaultBh = parsed.users.find(u => u.role === 'bh');
-
-          // Ensure every user has username, password, role, title, and bhId if FA/LA
-          parsed.users.forEach((u, i) => {
-            if (!u.username) {
-              u.username = u.name ? u.name.toLowerCase().replace(/[^a-z0-9]/g, '') : `user${i}`;
-              updated = true;
-            }
-            if (!u.password) {
-              u.password = 'arch123';
-              updated = true;
-            }
-            if (u.username === 'aravindan' && (!u.role || u.role === 'fa' || u.role === 'architect')) {
-              u.role = 'la';
-              updated = true;
-            }
-            const norm = normalizeRole(u.role);
-            if (u.role !== norm) {
-              u.role = norm;
-              updated = true;
-            }
-            const properTitle = getRoleTitle(u.role);
-            if (!u.title || u.title !== properTitle) {
-              u.title = properTitle;
-              updated = true;
-            }
-            // Link existing FAs and LAs to the default BH if unassigned
-            if ((u.role === 'fa' || u.role === 'la')) {
-              if (!u.bhId && defaultBh) {
-                u.bhId = defaultBh.id;
-                u.bhName = defaultBh.name || defaultBh.username;
-                updated = true;
-              }
-            } else {
-              // Business Heads and Admins never report to a Business Head
-              if (u.bhId || u.bhName) {
-                delete u.bhId;
-                delete u.bhName;
-                updated = true;
-              }
-            }
-          });
-        }
-
-        // Ensure each quotation has architect field populated
-        if (Array.isArray(parsed.quotations)) {
-          parsed.quotations.forEach(q => {
-            if (!q.architect) {
-              q.architect = q.user?.name || q.repInfo?.name || 'Cookscape Representative';
-              updated = true;
-            }
-          });
-        }
-
-        if (updated) {
-          saveLocalStore(parsed);
-        }
         return parsed;
       }
     } catch (e) {
@@ -342,21 +223,100 @@ function saveLocalStore(data) {
   }
 }
 
+// Check PostgreSQL connectivity on startup
+async function checkPostgres() {
+  if (!prisma) return false;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    isPostgresConnected = true;
+    console.log('🐘 [PostgreSQL] Connected successfully to local database "quotegenerator" via Prisma');
+    return true;
+  } catch (err) {
+    isPostgresConnected = false;
+    console.warn('⚠️ [PostgreSQL] Connection check failed:', err.message);
+    console.log('🔄 [PostgreSQL] Using local fallback store');
+    return false;
+  }
+}
+
+// Initial check triggered asynchronously
+checkPostgres();
+
 // Data Access API
 const dbService = {
-  isPostgresReady: () => false,
+  isPostgresReady: () => isPostgresConnected,
 
   async getVariants() {
+    if (isPostgresConnected) {
+      try {
+        const variants = await prisma.variant.findMany({
+          orderBy: { createdAt: 'asc' }
+        });
+        if (variants && variants.length > 0) return variants;
+      } catch (e) {
+        console.warn('Postgres getVariants error, falling back:', e.message);
+      }
+    }
     const store = loadLocalStore();
     return store.variants || defaultVariants;
   },
 
   async getVariantById(id) {
+    if (isPostgresConnected) {
+      try {
+        const variant = await prisma.variant.findUnique({ where: { id } });
+        if (variant) return variant;
+      } catch (e) {
+        console.warn('Postgres getVariantById error, falling back:', e.message);
+      }
+    }
     const store = loadLocalStore();
     return (store.variants || []).find(v => v.id === id);
   },
 
   async getUsers({ role, userId } = {}) {
+    if (isPostgresConnected) {
+      try {
+        const allUsers = await prisma.user.findMany({
+          orderBy: { createdAt: 'asc' }
+        });
+
+        let filtered = allUsers;
+        const normRole = role ? normalizeRole(role) : null;
+
+        if (normRole === 'bh' && userId) {
+          filtered = allUsers.filter(u => u.id === userId || u.bhId === userId || u.username === userId);
+        } else if ((normRole === 'fa' || normRole === 'la') && userId) {
+          filtered = allUsers.filter(u => u.id === userId || u.username === userId);
+        }
+
+        return filtered.map(u => {
+          const uRole = normalizeRole(u.role);
+          let bhName = u.bhName;
+          if (!bhName && u.bhId) {
+            const assignedBh = allUsers.find(b => b.id === u.bhId || b.username === u.bhId);
+            bhName = assignedBh?.name || assignedBh?.username || null;
+          }
+
+          return {
+            id: u.id,
+            username: u.username,
+            name: u.name,
+            contactNumber: u.contactNumber,
+            email: u.email,
+            role: uRole,
+            title: u.title || getRoleTitle(uRole),
+            bhId: u.bhId || null,
+            bhName: bhName || null,
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt
+          };
+        });
+      } catch (e) {
+        console.warn('Postgres getUsers error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     const allUsers = store.users || defaultUsers;
 
@@ -364,13 +324,10 @@ const dbService = {
     const normRole = role ? normalizeRole(role) : null;
 
     if (normRole === 'bh' && userId) {
-      // Business Head can view details about their team (FAs and LAs assigned to them) + themselves
       filtered = allUsers.filter(u => u.id === userId || u.bhId === userId || u.username === userId);
     } else if ((normRole === 'fa' || normRole === 'la') && userId) {
-      // FA and LA can only view their own data
       filtered = allUsers.filter(u => u.id === userId || u.username === userId);
     }
-    // Admin (or unauthenticated list) sees all users
 
     return filtered.map(u => {
       const uRole = normalizeRole(u.role);
@@ -397,14 +354,80 @@ const dbService = {
   },
 
   async authenticateUser(username, password) {
-    const store = loadLocalStore();
-    const users = store.users || defaultUsers;
     const cleanUser = String(username || '').trim().toLowerCase();
     const cleanPass = String(password || '').trim();
 
     if (!cleanUser || !cleanPass) return null;
 
-    // 1. Admin login: allow password 'admin' OR 'admin123' OR 'admin@123' OR matching in store
+    if (isPostgresConnected) {
+      try {
+        const allUsers = await prisma.user.findMany();
+        
+        // Match user by username or name
+        const matched = allUsers.find(u => {
+          const uName = (u.username || '').toLowerCase();
+          const realName = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const matchUser = uName === cleanUser || realName === cleanUser.replace(/[^a-z0-9]/g, '');
+          if (!matchUser) return false;
+
+          // Admin password allowances
+          if (cleanUser === 'admin') {
+            const validAdminPass = ['admin', 'admin123', 'admin@123', 'password', String(u.password)];
+            return validAdminPass.includes(cleanPass);
+          }
+
+          // Abishek allowances
+          if (cleanUser === 'abishek' || cleanUser === 'mrabishek') {
+            const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(u.password)];
+            return validPass.includes(cleanPass);
+          }
+
+          // Aravindan allowances
+          if (cleanUser === 'aravindan' || cleanUser === 'aravind') {
+            const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(u.password)];
+            return validPass.includes(cleanPass);
+          }
+
+          return (
+            String(u.password) === cleanPass ||
+            cleanPass === 'arch123' ||
+            cleanPass === 'bh123' ||
+            cleanPass === 'admin123' ||
+            cleanPass === 'admin' ||
+            cleanPass === cleanUser
+          );
+        });
+
+        if (matched) {
+          const uRole = normalizeRole(matched.role);
+          let bhName = matched.bhName;
+          if (!bhName && matched.bhId) {
+            const assignedBh = allUsers.find(b => b.id === matched.bhId || b.username === matched.bhId);
+            bhName = assignedBh?.name || assignedBh?.username || null;
+          }
+
+          return {
+            id: matched.id,
+            username: matched.username,
+            name: matched.name,
+            contactNumber: matched.contactNumber,
+            email: matched.email,
+            role: uRole,
+            title: matched.title || getRoleTitle(uRole),
+            bhId: matched.bhId || null,
+            bhName: bhName || null
+          };
+        }
+      } catch (e) {
+        console.warn('Postgres authenticateUser error, falling back:', e.message);
+      }
+    }
+
+    // Fallback store authentication
+    const store = loadLocalStore();
+    const users = store.users || defaultUsers;
+
+    // 1. Admin login fallback
     if (cleanUser === 'admin') {
       const adminInStore = users.find(u => u.username && u.username.toLowerCase() === 'admin');
       const validAdminPass = ['admin', 'admin123', 'admin@123', 'password', String(adminInStore?.password)];
@@ -421,58 +444,12 @@ const dbService = {
       }
     }
 
-    // 2. Abishek login fallback
-    if (cleanUser === 'abishek' || cleanUser === 'mrabishek') {
-      const target = users.find(u => u.username === 'abishek' || u.username === 'mrabishek' || (u.name && u.name.toLowerCase().includes('abishek')));
-      if (target) {
-        const validPass = ['abishek', 'arch123', 'admin', 'admin123', String(target.password)];
-        if (validPass.includes(cleanPass)) {
-          const uRole = normalizeRole(target.role || 'fa');
-          return {
-            id: target.id,
-            username: target.username || 'abishek',
-            name: target.name || 'Mr. Abishek',
-            contactNumber: target.contactNumber || '93611 84787',
-            email: target.email || 'designs.cookscape@gmail.com',
-            role: uRole,
-            title: getRoleTitle(uRole),
-            bhId: target.bhId || null,
-            bhName: target.bhName || null
-          };
-        }
-      }
-    }
-
-    // 3. Aravindan login fallback
-    if (cleanUser === 'aravindan' || cleanUser === 'aravind') {
-      const target = users.find(u => u.username === 'aravindan' || u.username === 'aravind' || (u.name && u.name.toLowerCase().includes('aravindan')));
-      if (target) {
-        const validPass = ['aravind', 'aravindan', 'arch123', 'admin', 'admin123', String(target.password)];
-        if (validPass.includes(cleanPass)) {
-          const uRole = normalizeRole(target.role || 'la');
-          return {
-            id: target.id,
-            username: target.username || 'aravindan',
-            name: target.name || 'Aravindan',
-            contactNumber: target.contactNumber || '7418414780',
-            email: target.email || 'aravind@cookscape.in',
-            role: uRole,
-            title: getRoleTitle(uRole),
-            bhId: target.bhId || null,
-            bhName: target.bhName || null
-          };
-        }
-      }
-    }
-
-    // 4. Any other registered user (Admin, Business Head, FA, LA) in store
     const matched = users.find(u => {
       const uName = (u.username || '').toLowerCase();
       const realName = (u.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const matchUser = uName === cleanUser || realName === cleanUser.replace(/[^a-z0-9]/g, '');
       if (!matchUser) return false;
 
-      // Allow password match, or standard fallback arch123/bh123/admin123/their own username
       return (
         String(u.password) === cleanPass ||
         cleanPass === 'arch123' ||
@@ -506,23 +483,87 @@ const dbService = {
   },
 
   async createUser(userData) {
-    const store = loadLocalStore();
-    if (!store.users) store.users = [...defaultUsers];
-
     const cleanUsername = String(userData.username || '').trim().toLowerCase();
     if (!cleanUsername) throw new Error('Username is required.');
     if (!userData.password) throw new Error('Password is required.');
+
+    const targetRole = normalizeRole(userData.role || 'fa');
+    let assignedBhId = null;
+    let assignedBhName = null;
+
+    if (isPostgresConnected) {
+      try {
+        const exists = await prisma.user.findFirst({
+          where: { username: { equals: cleanUsername, mode: 'insensitive' } }
+        });
+        if (exists) {
+          throw new Error(`Username "${cleanUsername}" is already taken. Please choose another.`);
+        }
+
+        if (targetRole === 'fa' || targetRole === 'la') {
+          if (userData.bhId) {
+            const bh = await prisma.user.findFirst({
+              where: {
+                OR: [{ id: userData.bhId }, { username: userData.bhId }]
+              }
+            });
+            if (bh) {
+              assignedBhId = bh.id;
+              assignedBhName = bh.name || bh.username;
+            } else {
+              assignedBhId = userData.bhId;
+              assignedBhName = userData.bhName || null;
+            }
+          }
+        }
+
+        const newUser = await prisma.user.create({
+          data: {
+            id: `user-${targetRole}-${Date.now()}`,
+            username: cleanUsername,
+            password: String(userData.password).trim(),
+            name: userData.name || userData.username,
+            contactNumber: userData.contactNumber || 'N/A',
+            email: userData.email || '',
+            role: targetRole,
+            title: getRoleTitle(targetRole),
+            bhId: assignedBhId,
+            bhName: assignedBhName
+          }
+        });
+
+        // Also sync local store
+        const store = loadLocalStore();
+        if (!store.users) store.users = [];
+        store.users.push(newUser);
+        saveLocalStore(store);
+
+        return {
+          id: newUser.id,
+          username: newUser.username,
+          name: newUser.name,
+          contactNumber: newUser.contactNumber,
+          email: newUser.email,
+          role: newUser.role,
+          title: newUser.title,
+          bhId: newUser.bhId,
+          bhName: newUser.bhName,
+          createdAt: newUser.createdAt
+        };
+      } catch (e) {
+        if (e.message.includes('already taken')) throw e;
+        console.warn('Postgres createUser error, falling back:', e.message);
+      }
+    }
+
+    const store = loadLocalStore();
+    if (!store.users) store.users = [...defaultUsers];
 
     const exists = store.users.some(u => u.username && u.username.toLowerCase() === cleanUsername);
     if (exists) {
       throw new Error(`Username "${cleanUsername}" is already taken. Please choose another.`);
     }
 
-    const targetRole = normalizeRole(userData.role || 'fa');
-    let assignedBhId = null;
-    let assignedBhName = null;
-
-    // While creating FA and LA, they should be assigned under a Business Head (BH)
     if (targetRole === 'fa' || targetRole === 'la') {
       if (userData.bhId) {
         const bh = store.users.find(u => u.id === userData.bhId || u.username === userData.bhId);
@@ -569,13 +610,40 @@ const dbService = {
   },
 
   async deleteUser(userId) {
+    if (isPostgresConnected) {
+      try {
+        const user = await prisma.user.findFirst({
+          where: { OR: [{ id: userId }, { username: userId }] }
+        });
+        if (!user) return false;
+        if (user.role === 'admin' && user.username === 'admin') {
+          throw new Error('Default Administrator account cannot be deleted.');
+        }
+
+        await prisma.user.delete({ where: { id: user.id } });
+
+        // Sync local store
+        const store = loadLocalStore();
+        if (store.users) {
+          const idx = store.users.findIndex(u => u.id === user.id || u.username === user.username);
+          if (idx !== -1) {
+            store.users.splice(idx, 1);
+            saveLocalStore(store);
+          }
+        }
+        return true;
+      } catch (e) {
+        if (e.message.includes('cannot be deleted')) throw e;
+        console.warn('Postgres deleteUser error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     if (!store.users) return false;
 
     const targetIndex = store.users.findIndex(u => u.id === userId || u.username === userId);
     if (targetIndex === -1) return false;
 
-    // Do not allow deleting the main admin account
     if (store.users[targetIndex].role === 'admin' && store.users[targetIndex].username === 'admin') {
       throw new Error('Default Administrator account cannot be deleted.');
     }
@@ -586,6 +654,96 @@ const dbService = {
   },
 
   async updateUser(userId, updateData) {
+    if (isPostgresConnected) {
+      try {
+        const user = await prisma.user.findFirst({
+          where: { OR: [{ id: userId }, { username: userId }] }
+        });
+        if (!user) throw new Error('User not found.');
+
+        const dataToUpdate = {};
+        if (updateData.username) {
+          const cleanUser = String(updateData.username).trim().toLowerCase();
+          const dup = await prisma.user.findFirst({
+            where: {
+              username: { equals: cleanUser, mode: 'insensitive' },
+              NOT: { id: user.id }
+            }
+          });
+          if (dup) throw new Error(`Username "${cleanUser}" is already taken by another user.`);
+          dataToUpdate.username = cleanUser;
+        }
+
+        if (updateData.name !== undefined && String(updateData.name).trim()) {
+          dataToUpdate.name = String(updateData.name).trim();
+        }
+        if (updateData.password && String(updateData.password).trim()) {
+          dataToUpdate.password = String(updateData.password).trim();
+        }
+        if (updateData.contactNumber !== undefined) {
+          dataToUpdate.contactNumber = String(updateData.contactNumber).trim();
+        }
+        if (updateData.email !== undefined) {
+          dataToUpdate.email = String(updateData.email).trim();
+        }
+        if (updateData.role && user.username !== 'admin') {
+          const newRole = normalizeRole(updateData.role);
+          dataToUpdate.role = newRole;
+          dataToUpdate.title = getRoleTitle(newRole);
+        }
+
+        const effectiveRole = dataToUpdate.role || user.role;
+        if (effectiveRole === 'fa' || effectiveRole === 'la') {
+          if (updateData.bhId !== undefined) {
+            if (updateData.bhId) {
+              const bh = await prisma.user.findFirst({
+                where: { OR: [{ id: updateData.bhId }, { username: updateData.bhId }] }
+              });
+              dataToUpdate.bhId = bh ? bh.id : updateData.bhId;
+              dataToUpdate.bhName = bh ? (bh.name || bh.username) : (updateData.bhName || null);
+            } else {
+              dataToUpdate.bhId = null;
+              dataToUpdate.bhName = null;
+            }
+          }
+        } else {
+          dataToUpdate.bhId = null;
+          dataToUpdate.bhName = null;
+        }
+
+        const updated = await prisma.user.update({
+          where: { id: user.id },
+          data: dataToUpdate
+        });
+
+        // Sync local store
+        const store = loadLocalStore();
+        if (store.users) {
+          const idx = store.users.findIndex(u => u.id === user.id);
+          if (idx !== -1) {
+            store.users[idx] = { ...store.users[idx], ...updated };
+            saveLocalStore(store);
+          }
+        }
+
+        return {
+          id: updated.id,
+          username: updated.username,
+          name: updated.name,
+          contactNumber: updated.contactNumber,
+          email: updated.email,
+          role: updated.role,
+          title: updated.title,
+          bhId: updated.bhId,
+          bhName: updated.bhName,
+          updatedAt: updated.updatedAt
+        };
+      } catch (e) {
+        if (e.message.includes('already taken') || e.message.includes('not found')) throw e;
+        console.warn('Postgres updateUser error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     if (!store.users) store.users = [...defaultUsers];
 
@@ -616,7 +774,6 @@ const dbService = {
       user.title = getRoleTitle(user.role);
     }
 
-    // Assign / reassign under Business Head (for fa and la)
     const currentRole = normalizeRole(user.role);
     if (currentRole === 'fa' || currentRole === 'la') {
       if (updateData.bhId !== undefined) {
@@ -652,11 +809,67 @@ const dbService = {
   },
 
   async getClients() {
+    if (isPostgresConnected) {
+      try {
+        const clients = await prisma.client.findMany({
+          orderBy: { createdAt: 'desc' }
+        });
+        if (clients && clients.length > 0) return clients;
+      } catch (e) {
+        console.warn('Postgres getClients error, falling back:', e.message);
+      }
+    }
     const store = loadLocalStore();
     return store.clients || defaultClients;
   },
 
   async upsertClient(clientData) {
+    if (isPostgresConnected) {
+      try {
+        // Match existing client by id, name, or phone
+        let existing = null;
+        if (clientData.id) {
+          existing = await prisma.client.findUnique({ where: { id: clientData.id } });
+        }
+        if (!existing && clientData.name) {
+          existing = await prisma.client.findFirst({
+            where: {
+              OR: [
+                { name: { equals: clientData.name, mode: 'insensitive' } },
+                clientData.contactNumber ? { contactNumber: clientData.contactNumber } : {}
+              ]
+            }
+          });
+        }
+
+        if (existing) {
+          const updated = await prisma.client.update({
+            where: { id: existing.id },
+            data: {
+              name: clientData.name || existing.name,
+              contactNumber: clientData.contactNumber || existing.contactNumber,
+              location: clientData.location || existing.location,
+              email: clientData.email !== undefined ? clientData.email : existing.email
+            }
+          });
+          return updated;
+        } else {
+          const created = await prisma.client.create({
+            data: {
+              id: clientData.id || `client-${Date.now()}`,
+              name: clientData.name || 'Valued Client',
+              contactNumber: clientData.contactNumber || 'N/A',
+              location: clientData.location || 'N/A',
+              email: clientData.email || null
+            }
+          });
+          return created;
+        }
+      } catch (e) {
+        console.warn('Postgres upsertClient error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     if (!store.clients) store.clients = [...defaultClients];
 
@@ -684,13 +897,81 @@ const dbService = {
   },
 
   async createQuotation(quoteData) {
+    const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Cookscape Representative';
+
+    if (isPostgresConnected) {
+      try {
+        let creatorUser = null;
+        if (quoteData.userId) {
+          creatorUser = await prisma.user.findFirst({
+            where: {
+              OR: [{ id: quoteData.userId }, { username: quoteData.userId }]
+            }
+          });
+        }
+
+        let quoteBhId = quoteData.bhId || null;
+        let quoteBhName = quoteData.bhName || null;
+
+        if (creatorUser) {
+          const uRole = normalizeRole(creatorUser.role);
+          if (uRole === 'bh') {
+            quoteBhId = creatorUser.id;
+            quoteBhName = creatorUser.name || creatorUser.username;
+          } else if (creatorUser.bhId) {
+            quoteBhId = creatorUser.bhId;
+            quoteBhName = creatorUser.bhName || null;
+          }
+        }
+
+        const created = await prisma.quotation.create({
+          data: {
+            id: quoteData.id || `quote-${Date.now()}`,
+            quotationNumber: quoteData.quotationNumber,
+            clientId: quoteData.clientId,
+            userId: creatorUser ? creatorUser.id : null,
+            architect: architectName,
+            bhId: quoteBhId,
+            bhName: quoteBhName,
+            repInfo: quoteData.repInfo || null,
+            clientInfo: quoteData.clientInfo || null,
+            selectedVariants: quoteData.selectedVariants || [],
+            selectedVariantIds: quoteData.selectedVariantIds || null,
+            unitPagesMetadata: quoteData.unitPagesMetadata || null,
+            accessoryPagesMetadata: quoteData.accessoryPagesMetadata || null,
+            snipsMetadata: quoteData.snipsMetadata || null,
+            quotationPagesMetadata: quoteData.quotationPagesMetadata || null,
+            filePath: quoteData.filePath,
+            fileSize: quoteData.fileSize || 0,
+            downloadUrl: quoteData.downloadUrl || null,
+            pdfPath: quoteData.pdfPath || null,
+            pdfFileSize: quoteData.pdfFileSize || 0,
+            pdfDownloadUrl: quoteData.pdfDownloadUrl || null,
+            date: quoteData.date ? new Date(quoteData.date) : new Date()
+          },
+          include: {
+            client: true,
+            user: true
+          }
+        });
+
+        // Also sync local store backup
+        const store = loadLocalStore();
+        if (!store.quotations) store.quotations = [];
+        store.quotations.unshift(created);
+        saveLocalStore(store);
+
+        return created;
+      } catch (e) {
+        console.warn('Postgres createQuotation error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     if (!store.quotations) store.quotations = [];
 
-    const architectName = quoteData.architect || quoteData.repInfo?.name || quoteData.user?.name || 'Cookscape Representative';
     const creatorUser = (store.users || []).find(u => u.id === quoteData.userId || u.username === quoteData.userId);
 
-    // Track BH assignment for this quote
     let quoteBhId = quoteData.bhId || null;
     let quoteBhName = quoteData.bhName || null;
 
@@ -723,16 +1004,76 @@ const dbService = {
   },
 
   async getQuotations({ userId, role } = {}) {
-    const store = loadLocalStore();
-    const all = store.quotations || [];
     const normRole = role ? normalizeRole(role) : null;
 
-    // 1. Admin can view ALL quotations across the studio
+    if (isPostgresConnected) {
+      try {
+        const allQuotes = await prisma.quotation.findMany({
+          orderBy: { createdAt: 'desc' },
+          include: { client: true, user: true }
+        });
+
+        // 1. Admin sees everything
+        if (normRole === 'admin') {
+          return allQuotes;
+        }
+
+        // 2. Business Head (BH)
+        if (normRole === 'bh' && userId) {
+          const allUsers = await prisma.user.findMany();
+          const myTeamUsers = allUsers.filter(u => u.bhId === userId || u.id === userId);
+          const teamUserIds = new Set(myTeamUsers.map(u => u.id));
+          const teamUsernames = new Set(myTeamUsers.map(u => (u.username || '').toLowerCase()));
+          const teamNames = new Set(myTeamUsers.map(u => (u.name || '').toLowerCase()));
+
+          return allQuotes.filter(q => {
+            if (q.bhId === userId) return true;
+            if (q.userId && teamUserIds.has(q.userId)) return true;
+            if (q.user?.id && teamUserIds.has(q.user.id)) return true;
+            const qArch = (q.architect || q.repInfo?.name || q.user?.name || '').toLowerCase();
+            for (const name of teamNames) {
+              if (name && qArch.includes(name)) return true;
+            }
+            const qUser = (q.user?.username || '').toLowerCase();
+            if (qUser && teamUsernames.has(qUser)) return true;
+            return false;
+          });
+        }
+
+        // 3. FA and LA
+        if ((normRole === 'fa' || normRole === 'la' || normRole === 'architect') && userId) {
+          const targetUser = await prisma.user.findFirst({
+            where: { OR: [{ id: userId }, { username: userId }] }
+          });
+          const targetName = targetUser?.name?.toLowerCase();
+          const targetEmail = targetUser?.email?.toLowerCase();
+          const targetUsername = targetUser?.username?.toLowerCase();
+
+          return allQuotes.filter(q => {
+            if (q.userId === userId) return true;
+            if (q.user?.id === userId) return true;
+            const qArch = (q.architect || q.repInfo?.name || q.user?.name || '').toLowerCase();
+            if (targetName && qArch.includes(targetName)) return true;
+            if (targetUsername && qArch.includes(targetUsername)) return true;
+            const qEmail = (q.repInfo?.email || q.user?.email || '').toLowerCase();
+            if (targetEmail && qEmail && qEmail === targetEmail) return true;
+            return false;
+          });
+        }
+
+        return allQuotes;
+      } catch (e) {
+        console.warn('Postgres getQuotations error, falling back:', e.message);
+      }
+    }
+
+    const store = loadLocalStore();
+    const all = store.quotations || [];
+
     if (normRole === 'admin') {
       return all;
     }
 
-    // 2. Business Head (BH): can view their own quotes + quotes created by FAs and LAs assigned to them!
     if (normRole === 'bh' && userId) {
       const allUsers = store.users || defaultUsers;
       const myTeamUsers = allUsers.filter(u => u.bhId === userId || u.id === userId);
@@ -741,12 +1082,9 @@ const dbService = {
       const teamNames = new Set(myTeamUsers.map(u => (u.name || '').toLowerCase()));
 
       return all.filter(q => {
-        // Tagged by bhId directly
         if (q.bhId === userId) return true;
-        // Created by BH or someone in their team
         if (q.userId && teamUserIds.has(q.userId)) return true;
         if (q.user?.id && teamUserIds.has(q.user.id)) return true;
-        // Creator name or username in team
         const qArch = (q.architect || q.repInfo?.name || q.user?.name || '').toLowerCase();
         for (const name of teamNames) {
           if (name && qArch.includes(name)) return true;
@@ -757,7 +1095,6 @@ const dbService = {
       });
     }
 
-    // 3. FA and LA: can view their data ONLY
     if ((normRole === 'fa' || normRole === 'la' || normRole === 'architect') && userId) {
       const targetUser = (store.users || []).find(u => u.id === userId || u.username === userId);
       const targetName = targetUser?.name?.toLowerCase();
@@ -780,6 +1117,24 @@ const dbService = {
   },
 
   async deleteQuotation(id) {
+    if (isPostgresConnected) {
+      try {
+        const removed = await prisma.quotation.delete({ where: { id } });
+        // Sync local store
+        const store = loadLocalStore();
+        if (store.quotations) {
+          const idx = store.quotations.findIndex(q => q.id === id);
+          if (idx !== -1) {
+            store.quotations.splice(idx, 1);
+            saveLocalStore(store);
+          }
+        }
+        return removed;
+      } catch (e) {
+        console.warn('Postgres deleteQuotation error, falling back:', e.message);
+      }
+    }
+
     const store = loadLocalStore();
     if (!store.quotations) return null;
 

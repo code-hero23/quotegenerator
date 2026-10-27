@@ -41,6 +41,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
+    postgresConnected: dbService.isPostgresReady(),
     masterTemplatePath: tplPath,
     templateExists: fs.existsSync(tplPath)
   });

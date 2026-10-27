@@ -9,10 +9,15 @@ generator client {
 
 model User {
   id            String      @id @default(uuid())
+  username      String      @unique
+  password      String      @default("arch123")
   name          String
-  contactNumber String      @map("contact_number")
+  contactNumber String?     @map("contact_number")
   email         String?
-  role          String      @default("Sales Representative")
+  role          String      @default("fa")
+  title         String?     @default("Feasibility Architect")
+  bhId          String?     @map("bh_id")
+  bhName        String?     @map("bh_name")
   createdAt     DateTime    @default(now()) @map("created_at")
   updatedAt     DateTime    @updatedAt @map("updated_at")
   quotations    Quotation[]
@@ -49,22 +54,32 @@ model Variant {
 }
 
 model Quotation {
-  id               String   @id @default(uuid())
-  quotationNumber  String   @unique @map("quotation_number")
-  clientId         String   @map("client_id")
-  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  userId           String   @map("user_id")
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date             DateTime @default(now())
-  selectedVariants Json     @map("selected_variants") // Array of variant objects or ids
-  filePath         String   @map("file_path")
-  fileSize         Int?     @map("file_size")
-  downloadUrl      String?  @map("download_url")
-  pdfPath          String?  @map("pdf_path")
-  pdfFileSize      Int?     @map("pdf_file_size")
-  pdfDownloadUrl   String?  @map("pdf_download_url")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id                     String   @id @default(uuid())
+  quotationNumber        String   @unique @map("quotation_number")
+  clientId               String   @map("client_id")
+  client                 Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId                 String?  @map("user_id")
+  user                   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  architect              String?
+  bhId                   String?  @map("bh_id")
+  bhName                 String?  @map("bh_name")
+  repInfo                Json?    @map("rep_info")
+  clientInfo             Json?    @map("client_info")
+  selectedVariants       Json     @map("selected_variants")
+  selectedVariantIds     Json?    @map("selected_variant_ids")
+  unitPagesMetadata      Json?    @map("unit_pages_metadata")
+  accessoryPagesMetadata Json?    @map("accessory_pages_metadata")
+  snipsMetadata          Json?    @map("snips_metadata")
+  quotationPagesMetadata Json?    @map("quotation_pages_metadata")
+  filePath               String   @map("file_path")
+  fileSize               Int?     @map("file_size")
+  downloadUrl            String?  @map("download_url")
+  pdfPath                String?  @map("pdf_path")
+  pdfFileSize            Int?     @map("pdf_file_size")
+  pdfDownloadUrl         String?  @map("pdf_download_url")
+  date                   DateTime @default(now())
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
 
   @@map("quotations")
 }

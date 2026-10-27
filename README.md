@@ -58,19 +58,20 @@ The database schema is defined in `server/prisma/schema.prisma` with models:
 - `variants`: Master variant definitions, prices, specs, and slide index mappings
 - `quotations`: Historical quotes generated, variant selections, file sizes, and download links
 
-### Connecting to Supabase / Neon / Local PostgreSQL:
-Open `server/.env` and update `DATABASE_URL`:
+### Connecting to Local PostgreSQL (Configured & Ready):
+`server/.env` is configured to connect to your local PostgreSQL instance:
 ```env
-DATABASE_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?schema=public"
+PORT=5000
+DATABASE_URL="postgresql://postgres@localhost:5433/quotegenerator?schema=public"
 ```
-Then push the schema and seed the initial variants:
+To push schema updates or re-seed:
 ```bash
 cd server
 npm run prisma:push
 npm run prisma:seed
 ```
 
-> **Note on Zero-Config Fallback:** If PostgreSQL is not reachable, the server gracefully activates its resilient local data store so that sales reps can immediately generate presentations and download customized quotes without interruption!
+> **Note on Zero-Config Fallback:** If PostgreSQL is temporarily stopped, the server gracefully activates its local fallback data store so you can continue generating quotes without interruption.
 
 ---
 

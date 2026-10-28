@@ -41,19 +41,29 @@ async function convertPptxToPdf(pptxPath, pdfPath) {
           convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
         });
     } else {
-      // Linux / Ubuntu: Primary ONLYOFFICE Document Builder (strict OOXML fidelity), fallback to LibreOffice
-      convertWithOnlyOffice(pptxPath, pdfPath)
-        .then(res => {
-          if (res && res.success) return res;
-          console.warn('⚠️ ONLYOFFICE docbuilder not present or failed, falling back to LibreOffice headless on Linux...');
-          return convertWithLibreOffice(pptxPath, pdfPath);
-        })
-        .then(resolve)
-        .catch(() => {
-          convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
-        });
+      // Linux / Ubuntu: Use ONLYOFFICE Document Builder if installed, otherwise go directly to LibreOffice
+      if (hasOnlyOfficeBuilder()) {
+        convertWithOnlyOffice(pptxPath, pdfPath)
+          .then(res => {
+            if (res && res.success) return res;
+            return convertWithLibreOffice(pptxPath, pdfPath);
+          })
+          .then(resolve)
+          .catch(() => {
+            convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
+          });
+      } else {
+        convertWithLibreOffice(pptxPath, pdfPath).then(resolve);
+      }
     }
   });
+}
+
+function hasOnlyOfficeBuilder() {
+  const candidatePaths = process.platform === 'win32'
+    ? ['C:\\Program Files\\ONLYOFFICE\\DocumentBuilder\\docbuilder.exe']
+    : ['/usr/bin/docbuilder', '/opt/onlyoffice/documentbuilder/docbuilder'];
+  return candidatePaths.some(p => fs.existsSync(p));
 }
 
 /**

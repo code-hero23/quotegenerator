@@ -223,13 +223,367 @@ function saveLocalStore(data) {
   }
 }
 
+// Ensure PostgreSQL tables & columns match current Prisma schema and sync fallback records
+async function ensurePostgresSchemaAndSync() {
+  if (!prisma) return;
+
+  const ddlStatements = [
+    // 1. Users table & columns
+    `CREATE TABLE IF NOT EXISTS "users" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "username" TEXT,
+      "password" TEXT NOT NULL DEFAULT 'arch123',
+      "name" TEXT NOT NULL,
+      "contact_number" TEXT,
+      "email" TEXT,
+      "role" TEXT NOT NULL DEFAULT 'fa',
+      "title" TEXT DEFAULT 'Feasibility Architect',
+      "bh_id" TEXT,
+      "bh_name" TEXT,
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "username" TEXT`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password" TEXT NOT NULL DEFAULT 'arch123'`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "contact_number" TEXT`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email" TEXT`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "role" TEXT NOT NULL DEFAULT 'fa'`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "title" TEXT DEFAULT 'Feasibility Architect'`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bh_id" TEXT`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bh_name" TEXT`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+
+    // 2. Clients table & columns
+    `CREATE TABLE IF NOT EXISTS "clients" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "contact_number" TEXT NOT NULL DEFAULT 'N/A',
+      "location" TEXT NOT NULL DEFAULT 'N/A',
+      "email" TEXT,
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "contact_number" TEXT NOT NULL DEFAULT 'N/A'`,
+    `ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "location" TEXT NOT NULL DEFAULT 'N/A'`,
+    `ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "email" TEXT`,
+    `ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE "clients" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+
+    // 3. Variants table & columns
+    `CREATE TABLE IF NOT EXISTS "variants" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "category" TEXT NOT NULL DEFAULT 'Modular Interior',
+      "description" TEXT,
+      "price" DOUBLE PRECISION,
+      "specs" JSONB,
+      "slide_indices" JSONB NOT NULL DEFAULT '[]',
+      "is_default" BOOLEAN NOT NULL DEFAULT false,
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "category" TEXT NOT NULL DEFAULT 'Modular Interior'`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "description" TEXT`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "price" DOUBLE PRECISION`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "specs" JSONB`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "slide_indices" JSONB NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "is_default" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE "variants" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+
+    // 4. Quotations table & columns
+    `CREATE TABLE IF NOT EXISTS "quotations" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "quotation_number" TEXT NOT NULL,
+      "client_id" TEXT NOT NULL,
+      "user_id" TEXT,
+      "architect" TEXT,
+      "bh_id" TEXT,
+      "bh_name" TEXT,
+      "rep_info" JSONB,
+      "client_info" JSONB,
+      "selected_variants" JSONB NOT NULL DEFAULT '[]',
+      "selected_variant_ids" JSONB,
+      "unit_pages_metadata" JSONB,
+      "accessory_pages_metadata" JSONB,
+      "snips_metadata" JSONB,
+      "quotation_pages_metadata" JSONB,
+      "file_path" TEXT NOT NULL DEFAULT '',
+      "file_size" INTEGER,
+      "download_url" TEXT,
+      "pdf_path" TEXT,
+      "pdf_file_size" INTEGER,
+      "pdf_download_url" TEXT,
+      "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "user_id" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "architect" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "bh_id" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "bh_name" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "rep_info" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "client_info" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "selected_variants" JSONB NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "selected_variant_ids" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "unit_pages_metadata" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "accessory_pages_metadata" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "snips_metadata" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "quotation_pages_metadata" JSONB`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "file_path" TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "file_size" INTEGER`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "download_url" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "pdf_path" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "pdf_file_size" INTEGER`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "pdf_download_url" TEXT`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `ALTER TABLE "quotations" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS "quotations_quotation_number_key" ON "quotations"("quotation_number")`
+  ];
+
+  for (const sql of ddlStatements) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (err) {
+      console.warn('⚠️ [PostgreSQL] Schema DDL notice:', err.message);
+    }
+  }
+
+  // Backfill any existing users that had NULL/empty username before enforcing unique index
+  try {
+    const existingRows = await prisma.$queryRawUnsafe(`SELECT "id", "username", "name" FROM "users"`);
+    const usedUsernames = new Set(
+      existingRows
+        .map(r => (r.username ? String(r.username).trim().toLowerCase() : ''))
+        .filter(Boolean)
+    );
+
+    for (const row of existingRows) {
+      if (!row.username || !String(row.username).trim()) {
+        const lowerName = String(row.name || '').toLowerCase();
+        let base = 'user';
+        if (row.id === 'user-admin-1' || lowerName === 'administrator') base = 'admin';
+        else if (row.id === 'user-bh-1' || lowerName.includes('suresh')) base = 'suresh_bh';
+        else if (row.id === 'user-sales-rep-1' || lowerName.includes('abishek')) base = 'abishek';
+        else if (row.id === 'user-arch-abirami' || lowerName.includes('abirami')) base = 'abirami';
+        else if (row.id === 'user-arch-aravindan' || lowerName.includes('aravind')) base = 'aravindan';
+        else base = lowerName.replace(/[^a-z0-9]/g, '') || 'user';
+
+        let candidate = base;
+        if (usedUsernames.has(candidate)) {
+          candidate = `${base}_${String(row.id).replace(/[^a-zA-Z0-9]/g, '').slice(-4).toLowerCase()}`;
+        }
+        usedUsernames.add(candidate);
+        await prisma.$executeRaw`UPDATE "users" SET "username" = ${candidate} WHERE "id" = ${row.id}`;
+      }
+    }
+
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_username_key" ON "users"("username")`);
+  } catch (err) {
+    console.warn('⚠️ [PostgreSQL] Username backfill notice:', err.message);
+  }
+}
+
+async function syncFallbackDataToPostgres() {
+  if (!prisma || !isPostgresConnected) return;
+  try {
+    const store = loadLocalStore();
+
+    // 1. Sync users from local_store.json first (preserves all existing/edited team users on server)
+    const localUsers = Array.isArray(store.users) ? store.users : [];
+    for (const lu of localUsers) {
+      if (!lu || (!lu.username && !lu.id)) continue;
+      const cleanUsername = String(lu.username || lu.name || lu.id).trim().toLowerCase().replace(/\s+/g, '_');
+      const existing = await prisma.user.findFirst({
+        where: { OR: [{ id: lu.id || '' }, { username: cleanUsername }] }
+      });
+      if (existing) {
+        // Only fill in or preserve details from local_store without losing custom changes
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            username: existing.username || cleanUsername,
+            password: lu.password || existing.password || 'arch123',
+            name: lu.name || existing.name,
+            contactNumber: lu.contactNumber || existing.contactNumber || 'N/A',
+            email: lu.email !== undefined ? lu.email : existing.email,
+            role: normalizeRole(lu.role || existing.role),
+            title: lu.title || existing.title || getRoleTitle(lu.role || existing.role),
+            bhId: lu.bhId !== undefined ? lu.bhId : existing.bhId,
+            bhName: lu.bhName !== undefined ? lu.bhName : existing.bhName
+          }
+        });
+      } else {
+        await prisma.user.create({
+          data: {
+            id: lu.id || `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            username: cleanUsername,
+            password: lu.password || 'arch123',
+            name: lu.name || cleanUsername,
+            contactNumber: lu.contactNumber || 'N/A',
+            email: lu.email || '',
+            role: normalizeRole(lu.role),
+            title: lu.title || getRoleTitle(lu.role),
+            bhId: lu.bhId || null,
+            bhName: lu.bhName || null
+          }
+        });
+      }
+    }
+
+    // Ensure default users exist only if no users exist at all (never overwrite existing users)
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      for (const u of defaultUsers) {
+        await prisma.user.create({
+          data: {
+            id: u.id,
+            username: u.username,
+            password: u.password || 'arch123',
+            name: u.name,
+            contactNumber: u.contactNumber || 'N/A',
+            email: u.email || '',
+            role: normalizeRole(u.role),
+            title: u.title || getRoleTitle(u.role),
+            bhId: u.bhId || null,
+            bhName: u.bhName || null
+          }
+        });
+      }
+    }
+
+    // 2. Sync clients from local_store.json without overwriting existing clients
+    if (Array.isArray(store.clients)) {
+      for (const c of store.clients) {
+        if (!c || !c.id) continue;
+        const existingClient = await prisma.client.findUnique({ where: { id: c.id } });
+        if (!existingClient) {
+          await prisma.client.create({
+            data: {
+              id: c.id,
+              name: c.name || 'Valued Client',
+              contactNumber: c.contactNumber || c.contact || 'N/A',
+              location: c.location || 'N/A',
+              email: c.email || null
+            }
+          });
+        }
+      }
+    }
+
+    // 3. Ensure variants exist in Postgres without overwriting existing variants
+    const variantCount = await prisma.variant.count();
+    if (variantCount === 0) {
+      for (const v of (store.variants || defaultVariants)) {
+        await prisma.variant.upsert({
+          where: { id: v.id },
+          update: {},
+          create: {
+            id: v.id,
+            name: v.name,
+            category: v.category || 'Modular Interior',
+            description: v.description || null,
+            price: v.price || null,
+            specs: v.specs || {},
+            slideIndices: v.slideIndices || [],
+            isDefault: Boolean(v.isDefault)
+          }
+        });
+      }
+    }
+
+    // 4. Sync any local fallback quotations into Postgres (never overwrite or delete existing quotes)
+    if (Array.isArray(store.quotations) && store.quotations.length > 0) {
+      for (const q of store.quotations) {
+        if (!q || !q.quotationNumber) continue;
+        const exists = await prisma.quotation.findFirst({
+          where: { OR: [{ id: q.id || '' }, { quotationNumber: q.quotationNumber }] }
+        });
+        if (exists) continue;
+
+        let cId = q.clientId;
+        if (cId) {
+          const clientExists = await prisma.client.findUnique({ where: { id: cId } });
+          if (!clientExists) {
+            const cInfo = q.clientInfo || q.client || {};
+            const createdClient = await prisma.client.create({
+              data: {
+                id: cId,
+                name: cInfo.name || 'Valued Client',
+                contactNumber: cInfo.contact || cInfo.contactNumber || 'N/A',
+                location: cInfo.location || 'N/A',
+                email: cInfo.email || null
+              }
+            });
+            cId = createdClient.id;
+          }
+        } else {
+          const cInfo = q.clientInfo || q.client || {};
+          const createdClient = await prisma.client.create({
+            data: {
+              id: `client-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+              name: cInfo.name || 'Valued Client',
+              contactNumber: cInfo.contact || cInfo.contactNumber || 'N/A',
+              location: cInfo.location || 'N/A',
+              email: cInfo.email || null
+            }
+          });
+          cId = createdClient.id;
+        }
+
+        let uId = null;
+        if (q.userId) {
+          const uExists = await prisma.user.findFirst({
+            where: { OR: [{ id: q.userId }, { username: q.userId }] }
+          });
+          if (uExists) uId = uExists.id;
+        }
+
+        await prisma.quotation.create({
+          data: {
+            id: q.id || `quote-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            quotationNumber: q.quotationNumber,
+            clientId: cId,
+            userId: uId,
+            architect: q.architect || q.repInfo?.name || 'Cookscape Representative',
+            bhId: q.bhId || null,
+            bhName: q.bhName || null,
+            repInfo: q.repInfo || null,
+            clientInfo: q.clientInfo || null,
+            selectedVariants: q.selectedVariants || [],
+            selectedVariantIds: q.selectedVariantIds || null,
+            unitPagesMetadata: q.unitPagesMetadata || null,
+            accessoryPagesMetadata: q.accessoryPagesMetadata || null,
+            snipsMetadata: q.snipsMetadata || null,
+            quotationPagesMetadata: q.quotationPagesMetadata || null,
+            filePath: q.filePath || '',
+            fileSize: q.fileSize || 0,
+            downloadUrl: q.downloadUrl || null,
+            pdfPath: q.pdfPath || null,
+            pdfFileSize: q.pdfFileSize || 0,
+            pdfDownloadUrl: q.pdfDownloadUrl || null,
+            date: q.date ? new Date(q.date) : new Date()
+          }
+        });
+        console.log(`🐘 [PostgreSQL] Synced fallback quotation ${q.quotationNumber} into PostgreSQL`);
+      }
+    }
+  } catch (err) {
+    console.warn('⚠️ [PostgreSQL] Fallback data sync notice:', err.message);
+  }
+}
+
 // Check PostgreSQL connectivity on startup
 async function checkPostgres() {
   if (!prisma) return false;
   try {
     await prisma.$queryRaw`SELECT 1`;
+    await ensurePostgresSchemaAndSync();
     isPostgresConnected = true;
-    console.log('🐘 [PostgreSQL] Connected successfully to local database "quotegenerator" via Prisma');
+    console.log('🐘 [PostgreSQL] Connected and schema verified successfully on database "quotegenerator"');
+    await syncFallbackDataToPostgres();
     return true;
   } catch (err) {
     isPostgresConnected = false;

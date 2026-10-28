@@ -168,65 +168,178 @@ const defaultClients = [
   }
 ];
 
-async function seed() {
-  console.log('--- Seeding PostgreSQL Database ---');
+async function ensureSchemaBeforeSeed() {
+  const ddlStatements = [
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "username" TEXT`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "password" TEXT NOT NULL DEFAULT 'arch123'`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "contact_number" TEXT`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "email" TEXT`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "role" TEXT NOT NULL DEFAULT 'fa'`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "title" TEXT DEFAULT 'Feasibility Architect'`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "bh_id" TEXT`,
+    `ALTER TABLE IF EXISTS "users" ADD COLUMN IF NOT EXISTS "bh_name" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "user_id" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "architect" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "bh_id" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "bh_name" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "rep_info" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "client_info" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "selected_variants" JSONB NOT NULL DEFAULT '[]'`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "selected_variant_ids" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "unit_pages_metadata" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "accessory_pages_metadata" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "snips_metadata" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "quotation_pages_metadata" JSONB`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "file_path" TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "file_size" INTEGER`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "download_url" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "pdf_path" TEXT`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "pdf_file_size" INTEGER`,
+    `ALTER TABLE IF EXISTS "quotations" ADD COLUMN IF NOT EXISTS "pdf_download_url" TEXT`
+  ];
 
-  // 1. Seed Users
-  for (const u of defaultUsers) {
-    await prisma.user.upsert({
-      where: { username: u.username },
-      update: {
-        name: u.name,
-        contactNumber: u.contactNumber,
-        email: u.email,
-        role: u.role,
-        title: u.title,
-        bhId: u.bhId,
-        bhName: u.bhName
-      },
-      create: u
-    });
-    console.log(`👤 Seeded User: ${u.name} (${u.username} / role: ${u.role})`);
+  for (const sql of ddlStatements) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+    } catch (_) {
+      // Table may not exist yet if prisma db push hasn't created it
+    }
   }
 
-  // 2. Seed Clients
-  for (const c of defaultClients) {
+  try {
+    const existingRows = await prisma.$queryRawUnsafe(`SELECT "id", "username", "name" FROM "users"`);
+    const usedUsernames = new Set(
+      existingRows
+        .map(r => (r.username ? String(r.username).trim().toLowerCase() : ''))
+        .filter(Boolean)
+    );
+
+    for (const row of existingRows) {
+      if (!row.username || !String(row.username).trim()) {
+        const lowerName = String(row.name || '').toLowerCase();
+        let base = 'user';
+        if (row.id === 'user-admin-1' || lowerName === 'administrator') base = 'admin';
+        else if (row.id === 'user-bh-1' || lowerName.includes('suresh')) base = 'suresh_bh';
+        else if (row.id === 'user-sales-rep-1' || lowerName.includes('abishek')) base = 'abishek';
+        else if (row.id === 'user-arch-abirami' || lowerName.includes('abirami')) base = 'abirami';
+        else if (row.id === 'user-arch-aravindan' || lowerName.includes('aravind')) base = 'aravindan';
+        else base = lowerName.replace(/[^a-z0-9]/g, '') || 'user';
+
+        let candidate = base;
+        if (usedUsernames.has(candidate)) {
+          candidate = `${base}_${String(row.id).replace(/[^a-zA-Z0-9]/g, '').slice(-4).toLowerCase()}`;
+        }
+        usedUsernames.add(candidate);
+        await prisma.$executeRaw`UPDATE "users" SET "username" = ${candidate} WHERE "id" = ${row.id}`;
+      }
+    }
+
+    await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS "users_username_key" ON "users"("username")`);
+  } catch (_) {
+    // Ignore if table doesn't exist yet
+  }
+}
+
+async function seed() {
+  console.log('--- Seeding & Syncing PostgreSQL Database Safely ---');
+  await ensureSchemaBeforeSeed();
+
+  const localStorePath = path.resolve(__dirname, '../uploads/local_store.json');
+  let localData = null;
+  if (fs.existsSync(localStorePath)) {
+    try {
+      localData = JSON.parse(fs.readFileSync(localStorePath, 'utf8'));
+    } catch (e) {
+      console.warn('Notice: Could not parse local_store.json:', e.message);
+    }
+  }
+
+  // 1. Sync Users from local_store.json first (preserves all custom/edited team users on server)
+  if (localData && Array.isArray(localData.users)) {
+    for (const lu of localData.users) {
+      if (!lu || (!lu.username && !lu.id)) continue;
+      const cleanUsername = String(lu.username || lu.name || lu.id).trim().toLowerCase().replace(/\s+/g, '_');
+      const existing = await prisma.user.findFirst({
+        where: { OR: [{ id: lu.id || '' }, { username: cleanUsername }] }
+      });
+      if (existing) {
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            username: existing.username || cleanUsername,
+            password: lu.password || existing.password || 'arch123',
+            name: lu.name || existing.name,
+            contactNumber: lu.contactNumber || existing.contactNumber || 'N/A',
+            email: lu.email !== undefined ? lu.email : existing.email,
+            role: lu.role || existing.role || 'fa',
+            title: lu.title || existing.title || 'Feasibility Architect',
+            bhId: lu.bhId !== undefined ? lu.bhId : existing.bhId,
+            bhName: lu.bhName !== undefined ? lu.bhName : existing.bhName
+          }
+        });
+      } else {
+        await prisma.user.create({
+          data: {
+            id: lu.id || `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            username: cleanUsername,
+            password: lu.password || 'arch123',
+            name: lu.name || cleanUsername,
+            contactNumber: lu.contactNumber || 'N/A',
+            email: lu.email || '',
+            role: lu.role || 'fa',
+            title: lu.title || 'Feasibility Architect',
+            bhId: lu.bhId || null,
+            bhName: lu.bhName || null
+          }
+        });
+      }
+    }
+  }
+
+  // Seed default users ONLY if they don't already exist (never overwrite existing user details)
+  for (const u of defaultUsers) {
+    const existing = await prisma.user.findFirst({
+      where: { OR: [{ id: u.id }, { username: u.username }] }
+    });
+    if (!existing) {
+      await prisma.user.create({ data: u });
+      console.log(`👤 Created Default User: ${u.name} (${u.username})`);
+    }
+  }
+
+  // 2. Seed Clients without overwriting existing client details
+  const clientsToSync = [
+    ...(localData && Array.isArray(localData.clients) ? localData.clients : []),
+    ...defaultClients
+  ];
+  for (const c of clientsToSync) {
+    if (!c || !c.id) continue;
     await prisma.client.upsert({
       where: { id: c.id },
-      update: {
-        name: c.name,
-        contactNumber: c.contactNumber,
-        location: c.location,
-        email: c.email
-      },
-      create: c
+      update: {},
+      create: {
+        id: c.id,
+        name: c.name || 'Valued Client',
+        contactNumber: c.contactNumber || c.contact || 'N/A',
+        location: c.location || 'N/A',
+        email: c.email || null
+      }
     });
-    console.log(`🏢 Seeded Client: ${c.name}`);
   }
 
-  // 3. Seed Variants
+  // 3. Seed Variants without overwriting existing variant details
   for (const v of defaultVariants) {
     await prisma.variant.upsert({
       where: { id: v.id },
-      update: {
-        name: v.name,
-        category: v.category,
-        description: v.description,
-        price: v.price,
-        specs: v.specs,
-        slideIndices: v.slideIndices,
-        isDefault: v.isDefault
-      },
+      update: {},
       create: v
     });
-    console.log(`📦 Seeded Variant: ${v.name}`);
   }
 
-  // 4. Migrate any local store quotations if local_store.json exists
-  const localStorePath = path.resolve(__dirname, '../uploads/local_store.json');
-  if (fs.existsSync(localStorePath)) {
+  // 4. Migrate any local store quotations if local_store.json exists (never overwrite existing quotes)
+  if (localData && Array.isArray(localData.quotations) && localData.quotations.length > 0) {
     try {
-      const data = JSON.parse(fs.readFileSync(localStorePath, 'utf8'));
+      const data = localData;
       if (Array.isArray(data.quotations) && data.quotations.length > 0) {
         console.log(`📥 Migrating ${data.quotations.length} quotations from local store...`);
         for (const q of data.quotations) {

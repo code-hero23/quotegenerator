@@ -88,8 +88,9 @@ fi
 if [ -f "prisma/schema.prisma" ]; then
     echo "📦 Generating Prisma Client..."
     npx prisma generate
-    if grep -q "^DATABASE_URL=" .env 2>/dev/null; then
-        echo "🐘 Syncing PostgreSQL schema safely..."
+    if grep -q "DATABASE_URL" .env 2>/dev/null; then
+        echo "🐘 Syncing PostgreSQL schema and migrating existing records safely..."
+        node prisma/seed.js || true
         npx prisma db push --skip-generate || true
     fi
 fi

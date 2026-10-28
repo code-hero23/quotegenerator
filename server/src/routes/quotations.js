@@ -280,6 +280,16 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       selectedVariantIds = [];
     }
 
+    const normalizeVid = (id) => {
+      if (!id) return id;
+      const s = String(id).trim();
+      if (s === 'var-surabhi-ll-elite') return 'var-ll-elite';
+      if (s === 'var-capricoast-glossy') return 'var-capricost-glossy';
+      return s;
+    };
+
+    selectedVariantIds = selectedVariantIds.map(normalizeVid);
+
     if (!selectedVariantIds || selectedVariantIds.length === 0) {
       return res.status(400).json({ success: false, error: 'At least one variant must be selected.' });
     }
@@ -287,6 +297,32 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     const snips = {};
     const unitSnips = [];
     const accessorySnips = [];
+
+    const resolveSnipRefToFile = (rawRef, filePathProp) => {
+      if (filePathProp && fs.existsSync(filePathProp)) {
+        return filePathProp;
+      }
+      if (!rawRef || typeof rawRef !== 'string') return null;
+      if (rawRef.startsWith('data:image/')) {
+        try {
+          const match = rawRef.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+          if (match) {
+            const ext = match[1] === 'jpeg' || match[1] === 'jpg' ? 'jpg' : 'png';
+            const outFile = path.resolve(snipsDir, `snip_inline_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`);
+            fs.writeFileSync(outFile, Buffer.from(match[2], 'base64'));
+            return outFile;
+          }
+        } catch (err) {
+          console.warn('Could not decode inline data URL snip:', err.message);
+        }
+      }
+      if (!rawRef.startsWith('blob:')) {
+        const basename = path.basename(rawRef.split('?')[0]);
+        const candidate = path.resolve(snipsDir, basename);
+        if (fs.existsSync(candidate)) return candidate;
+      }
+      return null;
+    };
 
     let unitPagesMetadata = [];
     try {
@@ -308,9 +344,12 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
 
     let quotationPagesMetadata = {};
     try {
-      quotationPagesMetadata = typeof body.quotationPagesMetadata === 'string'
+      const rawQMeta = typeof body.quotationPagesMetadata === 'string'
         ? JSON.parse(body.quotationPagesMetadata)
         : (body.quotationPagesMetadata || {});
+      Object.entries(rawQMeta || {}).forEach(([k, val]) => {
+        quotationPagesMetadata[normalizeVid(k)] = val;
+      });
     } catch (e) {
       quotationPagesMetadata = {};
     }
@@ -320,6 +359,8 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         uploadedFilesByField[file.fieldname] = file;
+        const normField = file.fieldname.replace('var-surabhi-ll-elite', 'var-ll-elite').replace('var-capricoast-glossy', 'var-capricost-glossy');
+        uploadedFilesByField[normField] = file;
       }
     }
 
@@ -332,17 +373,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
         if (uploadedFilesByField[fileKey]) {
           filePath = uploadedFilesByField[fileKey].path;
         } else {
-          // Check if existing file path is valid on this machine
-          if (meta.filePath && fs.existsSync(meta.filePath)) {
-            filePath = meta.filePath;
-          } else {
-            const rawRef = meta.previewUrl || meta.filePath;
-            if (rawRef) {
-              const basename = path.basename(rawRef);
-              const candidate = path.resolve(snipsDir, basename);
-              if (fs.existsSync(candidate)) filePath = candidate;
-            }
-          }
+          filePath = resolveSnipRefToFile(meta.previewUrl || meta.filePath, meta.filePath);
         }
 
         const hasValidFile = Boolean(filePath && fs.existsSync(filePath));
@@ -351,7 +382,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
         if (hasValidFile || hasValidNotes) {
           unitSnips.push({
             id: meta.id,
-            variantId: meta.variantId || 'all',
+            variantId: meta.variantId === 'all' ? 'all' : normalizeVid(meta.variantId || 'all'),
             title: meta.title || 'Unit Breakdown',
             category: meta.category || 'Unit Specification',
             notes: meta.notes || '',
@@ -370,16 +401,7 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
         if (uploadedFilesByField[fileKey]) {
           filePath = uploadedFilesByField[fileKey].path;
         } else {
-          if (meta.filePath && fs.existsSync(meta.filePath)) {
-            filePath = meta.filePath;
-          } else {
-            const rawRef = meta.previewUrl || meta.filePath;
-            if (rawRef) {
-              const basename = path.basename(rawRef);
-              const candidate = path.resolve(snipsDir, basename);
-              if (fs.existsSync(candidate)) filePath = candidate;
-            }
-          }
+          filePath = resolveSnipRefToFile(meta.previewUrl || meta.filePath, meta.filePath);
         }
 
         if (filePath && fs.existsSync(filePath)) {
@@ -398,7 +420,10 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
     let parsedExistingSnips = {};
     if (body.existingSnips) {
       try {
-        parsedExistingSnips = typeof body.existingSnips === 'string' ? JSON.parse(body.existingSnips) : body.existingSnips;
+        const rawExisting = typeof body.existingSnips === 'string' ? JSON.parse(body.existingSnips) : body.existingSnips;
+        Object.entries(rawExisting || {}).forEach(([k, val]) => {
+          parsedExistingSnips[normalizeVid(k)] = val;
+        });
       } catch (e) {
         console.warn('Could not parse existingSnips:', e.message);
       }
@@ -417,17 +442,8 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
           if (directFile) {
             foundPath = directFile.path;
           } else {
-            // 2. Check existing previewUrl / filePath
-            const rawRef = pageMeta.previewUrl || pageMeta.filePath;
-            if (rawRef) {
-              if (pageMeta.filePath && fs.existsSync(pageMeta.filePath)) {
-                foundPath = pageMeta.filePath;
-              } else {
-                const basename = path.basename(rawRef);
-                const candidate = path.resolve(snipsDir, basename);
-                if (fs.existsSync(candidate)) foundPath = candidate;
-              }
-            }
+            // 2. Check existing previewUrl / filePath / inline data URL
+            foundPath = resolveSnipRefToFile(pageMeta.previewUrl || pageMeta.filePath, pageMeta.filePath);
           }
           if (foundPath && fs.existsSync(foundPath)) {
             snips[vid].push(foundPath);
@@ -439,7 +455,8 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
       if (snips[vid].length === 0) {
         if (req.files && req.files.length > 0) {
           for (const file of req.files) {
-            if (file.fieldname.startsWith(`snip_${vid}`)) {
+            const normField = file.fieldname.replace('var-surabhi-ll-elite', 'var-ll-elite').replace('var-capricoast-glossy', 'var-capricost-glossy');
+            if (normField.startsWith(`snip_${vid}`)) {
               snips[vid].push(file.path);
             }
           }
@@ -448,11 +465,8 @@ router.post('/generate-quote', upload.any(), async (req, res) => {
           const list = Array.isArray(parsedExistingSnips[vid]) ? parsedExistingSnips[vid] : [parsedExistingSnips[vid]];
           list.forEach(item => {
             const rawRef = typeof item === 'string' ? item : (item.previewUrl || item.filePath);
-            if (rawRef) {
-              const basename = path.basename(rawRef);
-              const candidate = path.resolve(snipsDir, basename);
-              if (fs.existsSync(candidate)) snips[vid].push(candidate);
-            }
+            const resolved = resolveSnipRefToFile(rawRef, item?.filePath);
+            if (resolved) snips[vid].push(resolved);
           });
         }
       }

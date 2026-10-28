@@ -43,8 +43,8 @@ export default function StepSnipUpload({
   };
 
   // Helper: Get pages for a variant as normalized array of objects
-  const getPages = (variantId) => {
-    const raw = snipFiles[variantId];
+  const getPages = (variantId, sourceMap = snipFiles) => {
+    const raw = sourceMap?.[variantId];
     if (!raw) {
       return [{
         id: `page_${variantId}_1`,
@@ -81,15 +81,15 @@ export default function StepSnipUpload({
             size: 0
           };
         }
-        if (item instanceof File) {
+        if (item instanceof File || item instanceof Blob) {
           return {
             id: `page_${variantId}_${idx + 1}`,
             pageNumber: idx + 1,
             title: idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`,
             file: item,
             previewUrl: URL.createObjectURL(item),
-            name: item.name,
-            size: item.size
+            name: item.name || 'Quotation_Snip.png',
+            size: item.size || 0
           };
         }
         return {
@@ -97,7 +97,7 @@ export default function StepSnipUpload({
           pageNumber: idx + 1,
           title: item.title || (idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`),
           file: item.file || null,
-          previewUrl: item.previewUrl || (item.file instanceof File ? URL.createObjectURL(item.file) : null),
+          previewUrl: item.previewUrl || ((item.file instanceof File || item.file instanceof Blob) ? URL.createObjectURL(item.file) : null),
           name: item.name || (item.file?.name) || 'Quotation Snip',
           size: item.size || (item.file?.size) || 0
         };
@@ -105,7 +105,7 @@ export default function StepSnipUpload({
     }
 
     // Single item
-    const file = raw instanceof File ? raw : (raw.file || null);
+    const file = (raw instanceof File || raw instanceof Blob) ? raw : (raw.file || null);
     const previewUrl = typeof raw === 'string' ? raw : (raw.previewUrl || (file ? URL.createObjectURL(file) : null));
     return [{
       id: raw.id || `page_${variantId}_1`,
@@ -118,32 +118,39 @@ export default function StepSnipUpload({
     }];
   };
 
-  // Add an extra quotation page to a variant
-  const handleAddExtraPage = (variantId, customTitle = null) => {
+  // Add an extra quotation page to a variant (optionally with an attached file)
+  const handleAddExtraPage = (variantId, customTitle = null, initialFile = null) => {
     const currentPages = getPages(variantId);
     const newPageNum = currentPages.length + 1;
     const defaultTitle = customTitle || COMMON_PAGE_TITLES[Math.min(newPageNum - 1, COMMON_PAGE_TITLES.length - 1)] || `Quotation Page ${newPageNum}`;
+    const previewUrl = initialFile ? URL.createObjectURL(initialFile) : null;
 
     const newPage = {
       id: `snip_${variantId}_${Date.now()}_${Math.random().toString(36).substring(4)}`,
       pageNumber: newPageNum,
       title: defaultTitle,
-      file: null,
-      previewUrl: null,
-      name: '',
-      size: 0
+      file: initialFile || null,
+      previewUrl,
+      name: initialFile?.name || '',
+      size: initialFile?.size || 0
     };
 
-    setSnipFiles(prev => ({
-      ...prev,
-      [variantId]: [...currentPages, newPage]
-    }));
+    setSnipFiles(prev => {
+      const prevPages = getPages(variantId, prev);
+      return {
+        ...prev,
+        [variantId]: [...prevPages, { ...newPage, pageNumber: prevPages.length + 1 }]
+      };
+    });
 
     setActiveVariantId(variantId);
     setActivePageId(newPage.id);
 
     const vName = variants.find(v => v.id === variantId)?.name || 'Variant';
-    showToast(`📄 Added extra quotation slide (Page ${newPageNum}) for ${vName}!`);
+    if (!initialFile) {
+      showToast(`📄 Added extra quotation slide (Page ${newPageNum}) for ${vName}!`);
+    }
+    return newPage;
   };
 
   // Remove a page (or clear Page 1)
@@ -167,22 +174,24 @@ export default function StepSnipUpload({
       return;
     }
 
-    const filtered = currentPages.filter(p => p.id !== pageId).map((p, idx) => ({
-      ...p,
-      pageNumber: idx + 1
-    }));
-
-    setSnipFiles(prev => ({
-      ...prev,
-      [variantId]: filtered
-    }));
+    setSnipFiles(prev => {
+      const prevPages = getPages(variantId, prev);
+      const filtered = prevPages.filter(p => p.id !== pageId).map((p, idx) => ({
+        ...p,
+        pageNumber: idx + 1
+      }));
+      return {
+        ...prev,
+        [variantId]: filtered
+      };
+    });
     showToast('Removed quotation page.');
   };
 
   // Update page title
   const handleUpdatePageTitle = (variantId, pageId, title) => {
     setSnipFiles(prev => {
-      const currentPages = getPages(variantId);
+      const currentPages = getPages(variantId, prev);
       const updated = currentPages.map(p => p.id === pageId ? { ...p, title } : p);
       return { ...prev, [variantId]: updated };
     });
@@ -194,19 +203,28 @@ export default function StepSnipUpload({
     const previewUrl = URL.createObjectURL(file);
 
     setSnipFiles(prev => {
-      const currentPages = getPages(variantId);
-      const updated = currentPages.map(p => {
-        if (p.id === pageId) {
-          return {
+      const currentPages = getPages(variantId, prev);
+      const matched = currentPages.some(p => p.id === pageId);
+      const updated = matched
+        ? currentPages.map(p => {
+            if (p.id === pageId) {
+              return {
+                ...p,
+                file,
+                previewUrl,
+                name: file.name || `Quotation_Snip_Page_${p.pageNumber}.png`,
+                size: file.size || 0
+              };
+            }
+            return p;
+          })
+        : currentPages.map((p, idx) => idx === 0 ? {
             ...p,
             file,
             previewUrl,
-            name: file.name,
-            size: file.size
-          };
-        }
-        return p;
-      });
+            name: file.name || 'Quotation_Snip_Page_1.png',
+            size: file.size || 0
+          } : p);
       return { ...prev, [variantId]: updated };
     });
     setActiveVariantId(variantId);
@@ -216,7 +234,7 @@ export default function StepSnipUpload({
   // Clear file from a page
   const handleClearPageFile = (variantId, pageId) => {
     setSnipFiles(prev => {
-      const currentPages = getPages(variantId);
+      const currentPages = getPages(variantId, prev);
       const updated = currentPages.map(p => {
         if (p.id === pageId) {
           if (p.previewUrl && !p.previewUrl.startsWith('/uploads/')) {
@@ -314,16 +332,8 @@ export default function StepSnipUpload({
           handleSetPageFile(targetVariant.id, targetPage.id, imageFile);
           showToast(`📋 Screenshot attached to "${targetVariant.name}" (Page ${targetPage.pageNumber})!`);
         } else {
-          // If all current pages are filled, automatically create extra page!
-          handleAddExtraPage(targetVariant.id);
-          setTimeout(() => {
-            const updatedPages = getPages(targetVariant.id);
-            const lastPage = updatedPages[updatedPages.length - 1];
-            if (lastPage) {
-              handleSetPageFile(targetVariant.id, lastPage.id, imageFile);
-              showToast(`📋 Screenshot attached to newly added Page ${lastPage.pageNumber} of "${targetVariant.name}"!`);
-            }
-          }, 50);
+          const added = handleAddExtraPage(targetVariant.id, null, imageFile);
+          showToast(`📋 Screenshot attached to newly added Page ${added.pageNumber} of "${targetVariant.name}"!`);
         }
         return;
       }
@@ -345,15 +355,8 @@ export default function StepSnipUpload({
               handleSetPageFile(targetVariant.id, targetPage.id, convertedFile);
               showToast(`📊 Excel table converted & attached to "${targetVariant.name}" (Page ${targetPage.pageNumber})!`);
             } else {
-              handleAddExtraPage(targetVariant.id);
-              setTimeout(() => {
-                const updatedPages = getPages(targetVariant.id);
-                const lastPage = updatedPages[updatedPages.length - 1];
-                if (lastPage) {
-                  handleSetPageFile(targetVariant.id, lastPage.id, convertedFile);
-                  showToast(`📊 Excel table converted & attached to Page ${lastPage.pageNumber} of "${targetVariant.name}"!`);
-                }
-              }, 50);
+              const added = handleAddExtraPage(targetVariant.id, null, convertedFile);
+              showToast(`📊 Excel table converted & attached to Page ${added.pageNumber} of "${targetVariant.name}"!`);
             }
             return;
           }

@@ -596,6 +596,41 @@ async function checkPostgres() {
 // Initial check triggered asynchronously
 checkPostgres();
 
+function normalizeVariantRecord(v) {
+  if (!v) return v;
+  const rawName = String(v.name || '').toUpperCase();
+  let indices = v.slideIndices;
+  if (typeof indices === 'string') {
+    try { indices = JSON.parse(indices); } catch (_) { indices = []; }
+  }
+  const firstSlide = Array.isArray(indices) && indices.length > 0 ? Number(indices[0]) : null;
+
+  if (
+    v.id === 'var-surabhi-ll-elite' ||
+    v.id === 'var-ll-elite' ||
+    rawName === 'SURABHI - LL ELITE' ||
+    rawName === 'SURABHI  - LL ELITE' ||
+    rawName === 'LL-ELITE' ||
+    (rawName.includes('ELITE') && !rawName.includes('ELEGANT')) ||
+    firstSlide === 7
+  ) {
+    return { ...v, id: 'var-ll-elite', name: 'LL ELITE', slideIndices: [7, 8, 9] };
+  }
+  if (firstSlide === 10 || rawName.includes('CAPRICOAST MATTE')) {
+    return { ...v, id: 'var-capricoast-matte', slideIndices: [10, 11, 12] };
+  }
+  if (firstSlide === 13 || rawName.includes('GLOSSY')) {
+    return { ...v, id: 'var-capricost-glossy', slideIndices: [13, 14, 15] };
+  }
+  if (firstSlide === 16 || rawName.includes('ELEGANT SURABHI')) {
+    return { ...v, id: 'var-elegant-surabhi', slideIndices: [16, 17, 18] };
+  }
+  if (firstSlide === 19 || rawName.includes('4X TUFF')) {
+    return { ...v, id: 'var-4x-tuff-gloss', slideIndices: [19, 20, 21] };
+  }
+  return v;
+}
+
 // Data Access API
 const dbService = {
   isPostgresReady: () => isPostgresConnected,
@@ -606,26 +641,21 @@ const dbService = {
         const variants = await prisma.variant.findMany({
           orderBy: { createdAt: 'asc' }
         });
-        if (variants && variants.length > 0) return variants;
+        if (variants && variants.length > 0) {
+          return variants.map(normalizeVariantRecord);
+        }
       } catch (e) {
         console.warn('Postgres getVariants error, falling back:', e.message);
       }
     }
     const store = loadLocalStore();
-    return store.variants || defaultVariants;
+    return (store.variants || defaultVariants).map(normalizeVariantRecord);
   },
 
   async getVariantById(id) {
-    if (isPostgresConnected) {
-      try {
-        const variant = await prisma.variant.findUnique({ where: { id } });
-        if (variant) return variant;
-      } catch (e) {
-        console.warn('Postgres getVariantById error, falling back:', e.message);
-      }
-    }
-    const store = loadLocalStore();
-    return (store.variants || []).find(v => v.id === id);
+    const all = await this.getVariants();
+    const cleanId = id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id;
+    return all.find(v => v.id === cleanId || v.id === id);
   },
 
   async getUsers({ role, userId } = {}) {

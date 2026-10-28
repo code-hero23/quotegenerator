@@ -294,7 +294,20 @@ export default function App() {
       }
 
       if (fullDraft.snipFiles && typeof fullDraft.snipFiles === 'object' && Object.keys(fullDraft.snipFiles).length > 0) {
-        setSnipFiles(fullDraft.snipFiles);
+        setSnipFiles(prev => {
+          const merged = { ...prev };
+          Object.entries(fullDraft.snipFiles).forEach(([vid, savedPages]) => {
+            const cleanVid = vid === 'var-surabhi-ll-elite' ? 'var-ll-elite' : vid;
+            const existingPages = Array.isArray(merged[cleanVid]) ? merged[cleanVid] : [];
+            const incomingPages = Array.isArray(savedPages) ? savedPages : [savedPages];
+            const hasIncomingAttachment = incomingPages.some(p => p && (p.file || p.previewUrl));
+            const hasExistingAttachment = existingPages.some(p => p && (p.file || p.previewUrl));
+            if (hasIncomingAttachment && !hasExistingAttachment) {
+              merged[cleanVid] = incomingPages;
+            }
+          });
+          return merged;
+        });
       }
     }).catch(err => {
       console.warn('Draft rehydration from IndexedDB skipped:', err);
@@ -660,35 +673,62 @@ export default function App() {
         }
       }
 
+      // Helper to guarantee any File, Blob, or blob:/data: previewUrl is converted into an uploadable File
+      const resolveUploadableFile = async (item, fallbackName = 'snip.png') => {
+        if (!item) return null;
+        const rawFile = item?.file || ((item instanceof File || item instanceof Blob) ? item : null);
+        if (rawFile instanceof File) return rawFile;
+        if (rawFile instanceof Blob) {
+          const ext = (rawFile.type && rawFile.type.includes('jpeg')) ? '.jpg' : '.png';
+          const name = item?.name || (fallbackName.endsWith(ext) ? fallbackName : `${fallbackName}${ext}`);
+          return new File([rawFile], name, { type: rawFile.type || 'image/png' });
+        }
+        const previewUrl = typeof item === 'string' ? item : item?.previewUrl;
+        if (previewUrl && (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:'))) {
+          try {
+            const res = await fetch(previewUrl);
+            const blob = await res.blob();
+            const ext = (blob.type && blob.type.includes('jpeg')) ? '.jpg' : '.png';
+            const name = item?.name || (fallbackName.endsWith(ext) ? fallbackName : `${fallbackName}${ext}`);
+            return new File([blob], name, { type: blob.type || 'image/png' });
+          } catch (e) {
+            console.warn('Could not recover blob from previewUrl:', e);
+          }
+        }
+        return null;
+      };
+
       // Append snip images or preserve existing preview URLs on re-edit
       const existingSnips = {};
       const quotationPagesMetadata = {};
 
-      Object.entries(snipFiles).forEach(([variantId, snipsOrFile]) => {
+      for (const [rawVariantId, snipsOrFile] of Object.entries(snipFiles)) {
+        const variantId = rawVariantId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : rawVariantId;
         if (Array.isArray(snipsOrFile)) {
-          const filledItems = snipsOrFile.filter(item => item && (item.file || item.previewUrl || item instanceof File));
-          filledItems.forEach((item, index) => {
-            const file = item?.file || (item instanceof File ? item : null);
-            if (file) {
-              formData.append(`snip_${variantId}_${index}`, file);
+          const filledItems = snipsOrFile.filter(item => item && (item.file || item.previewUrl || item instanceof File || item instanceof Blob));
+          for (let index = 0; index < filledItems.length; index++) {
+            const item = filledItems[index];
+            const uploadFile = await resolveUploadableFile(item, `quote_${variantId}_p${index + 1}`);
+            if (uploadFile) {
+              formData.append(`snip_${variantId}_${index}`, uploadFile);
             } else if (item?.previewUrl) {
               if (!existingSnips[variantId]) existingSnips[variantId] = [];
               existingSnips[variantId].push(item.previewUrl);
             }
-          });
+          }
 
           if (filledItems.length > 0) {
             quotationPagesMetadata[variantId] = filledItems.map((item, idx) => ({
               id: item.id || `quote_page_${idx + 1}`,
               title: item.title || (idx === 0 ? 'Main Quotation' : `Quotation Page ${idx + 1}`),
-              previewUrl: item.previewUrl || null,
+              previewUrl: (item.previewUrl && !item.previewUrl.startsWith('blob:')) ? item.previewUrl : null,
               filePath: item.filePath || null
             }));
           }
         } else if (snipsOrFile) {
-          const file = snipsOrFile?.file || (snipsOrFile instanceof File ? snipsOrFile : null);
-          if (file) {
-            formData.append(`snip_${variantId}_0`, file);
+          const uploadFile = await resolveUploadableFile(snipsOrFile, `quote_${variantId}_p1`);
+          if (uploadFile) {
+            formData.append(`snip_${variantId}_0`, uploadFile);
           } else if (snipsOrFile?.previewUrl) {
             if (!existingSnips[variantId]) existingSnips[variantId] = [];
             existingSnips[variantId].push(snipsOrFile.previewUrl);
@@ -696,11 +736,11 @@ export default function App() {
           quotationPagesMetadata[variantId] = [{
             id: snipsOrFile.id || 'quote_page_1',
             title: snipsOrFile.title || 'Main Quotation',
-            previewUrl: snipsOrFile.previewUrl || null,
+            previewUrl: (snipsOrFile.previewUrl && !snipsOrFile.previewUrl.startsWith('blob:')) ? snipsOrFile.previewUrl : null,
             filePath: snipsOrFile.filePath || null
           }];
         }
-      });
+      }
 
       if (Object.keys(existingSnips).length > 0) {
         formData.append('existingSnips', JSON.stringify(existingSnips));
@@ -710,19 +750,20 @@ export default function App() {
       // Append unit pages metadata & unit snip files
       formData.append('unitPagesMetadata', JSON.stringify(unitPages.map(p => ({
         id: p.id,
-        variantId: p.variantId || 'all',
+        variantId: (p.variantId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : p.variantId) || 'all',
         title: p.title,
         category: p.category,
         notes: p.notes,
-        previewUrl: p.previewUrl,
+        previewUrl: (p.previewUrl && !p.previewUrl.startsWith('blob:')) ? p.previewUrl : null,
         filePath: p.filePath
       }))));
 
-      unitPages.forEach(p => {
-        if (p.file) {
-          formData.append(`unit_snip_${p.id}`, p.file);
+      for (const p of unitPages) {
+        const unitFile = await resolveUploadableFile(p, `unit_${p.id}`);
+        if (unitFile) {
+          formData.append(`unit_snip_${p.id}`, unitFile);
         }
-      });
+      }
 
       // Append accessory pages metadata & accessory snip files
       formData.append('accessoryPagesMetadata', JSON.stringify(accessoryPages.map(p => ({
@@ -730,15 +771,16 @@ export default function App() {
         title: p.title,
         category: p.category,
         notes: p.notes,
-        previewUrl: p.previewUrl,
+        previewUrl: (p.previewUrl && !p.previewUrl.startsWith('blob:')) ? p.previewUrl : null,
         filePath: p.filePath
       }))));
 
-      accessoryPages.forEach(p => {
-        if (p.file) {
-          formData.append(`accessory_snip_${p.id}`, p.file);
+      for (const p of accessoryPages) {
+        const accFile = await resolveUploadableFile(p, `accessory_${p.id}`);
+        if (accFile) {
+          formData.append(`accessory_snip_${p.id}`, accFile);
         }
-      });
+      }
 
       const response = await axios.post(`${API_BASE}/generate-quote`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }

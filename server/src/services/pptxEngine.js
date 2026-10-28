@@ -164,6 +164,33 @@ function getImageDimensions(buf) {
 }
 
 /**
+ * Detects image file extension from magic bytes so OOXML [Content_Types].xml always matches
+ */
+function detectImageExtension(buf, fallbackPath = '') {
+  if (buf && Buffer.isBuffer(buf) && buf.length >= 12) {
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) return 'png';
+    if (buf[0] === 0xFF && buf[1] === 0xD8) return 'jpeg';
+    if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') return 'webp';
+    if (buf.toString('ascii', 0, 3) === 'GIF') return 'gif';
+  }
+  const ext = String(path.extname(String(fallbackPath || '')).replace('.', '')).toLowerCase();
+  if (ext === 'jpg') return 'jpeg';
+  return ext || 'png';
+}
+
+function normalizeVariantKey(id) {
+  if (!id) return '';
+  const s = String(id).trim();
+  if (s === 'var-surabhi-ll-elite' || s.toUpperCase() === 'SURABHI - LL ELITE' || s.toUpperCase() === 'LL ELITE') {
+    return 'var-ll-elite';
+  }
+  if (s === 'var-capricoast-glossy') {
+    return 'var-capricost-glossy';
+  }
+  return s;
+}
+
+/**
  * Calculates optimal shape transform coordinates (EMU) so snips never shrink or distort.
  * Slide dimensions: 10045700 x 14198600 EMUs (Portrait)
  * Content area: width up to 8800000, height up to 10400000, top 2500000
@@ -324,11 +351,11 @@ class PptxEngine {
 
     // 2. Determine which slide display indices to DELETE
     const slidesToDeleteIndices = new Set();
-    const selectedVariantIdSet = new Set(selectedVariantIds.map(String));
+    const selectedVariantIdSet = new Set(selectedVariantIds.map(id => normalizeVariantKey(id)));
 
     for (const variant of allVariants) {
-      const variantIdStr = String(variant.id);
-      const isSelected = selectedVariantIdSet.has(variantIdStr);
+      const variantIdStr = normalizeVariantKey(variant.id);
+      const isSelected = selectedVariantIdSet.has(variantIdStr) || selectedVariantIds.map(String).includes(String(variant.id));
       if (!isSelected && variant.slideIndices) {
         let indices = variant.slideIndices;
         if (typeof indices === 'string') {
@@ -348,6 +375,24 @@ class PptxEngine {
 
     let updatedContentTypes = contentTypesXmlStr;
     let updatedPresRelsXml = presRelsXmlStr;
+
+    // Ensure [Content_Types].xml supports all common image extensions (jpg, jpeg, png, webp, gif, bmp)
+    const requiredImageDefaults = [
+      { ext: 'jpg', type: 'image/jpeg' },
+      { ext: 'jpeg', type: 'image/jpeg' },
+      { ext: 'png', type: 'image/png' },
+      { ext: 'webp', type: 'image/webp' },
+      { ext: 'gif', type: 'image/gif' },
+      { ext: 'bmp', type: 'image/bmp' }
+    ];
+    for (const { ext, type } of requiredImageDefaults) {
+      if (!new RegExp(`Extension="${ext}"`, 'i').test(updatedContentTypes)) {
+        updatedContentTypes = updatedContentTypes.replace(
+          /<Types([^>]*)>/,
+          `<Types$1><Default Extension="${ext}" ContentType="${type}"/>`
+        );
+      }
+    }
 
     // Purge unselected variant slides
     for (const del of deletedSlides) {
@@ -375,7 +420,7 @@ class PptxEngine {
       // If it has a specific variantId, it applies only to that variant.
       for (let vIdx = 0; vIdx < allVariants.length; vIdx++) {
         const v = allVariants[vIdx];
-        const vId = String(v.id);
+        const vId = normalizeVariantKey(v.id);
         if (!selectedVariantIdSet.has(vId)) continue;
 
         let indices = v.slideIndices;
@@ -390,7 +435,7 @@ class PptxEngine {
         // Find matching unit snips for this variant
         const matchingUnitSnips = unitSnips.filter(u => {
           if (!u.variantId || u.variantId === 'all') return true;
-          return String(u.variantId) === vId;
+          return normalizeVariantKey(u.variantId) === vId;
         });
 
         if (matchingUnitSnips.length === 0) continue;
@@ -429,9 +474,10 @@ class PptxEngine {
           let uExt = 'png';
           if (Buffer.isBuffer(uFilePath)) {
             uBuffer = uFilePath;
+            uExt = detectImageExtension(uBuffer);
           } else if (typeof uFilePath === 'string' && fs.existsSync(uFilePath)) {
             uBuffer = fs.readFileSync(uFilePath);
-            uExt = path.extname(uFilePath).replace('.', '') || 'png';
+            uExt = detectImageExtension(uBuffer, uFilePath);
           }
 
           const uNotes = u.notes && u.notes.trim() ? u.notes.trim() : '';
@@ -582,9 +628,10 @@ class PptxEngine {
         let aExt = 'png';
         if (Buffer.isBuffer(aFilePath)) {
           aBuffer = aFilePath;
+          aExt = detectImageExtension(aBuffer);
         } else if (typeof aFilePath === 'string' && fs.existsSync(aFilePath)) {
           aBuffer = fs.readFileSync(aFilePath);
-          aExt = path.extname(aFilePath).replace('.', '') || 'png';
+          aExt = detectImageExtension(aBuffer, aFilePath);
         }
 
         const aNotes = a.notes && a.notes.trim() ? a.notes.trim() : '';
@@ -706,10 +753,11 @@ class PptxEngine {
     const normalizedSnips = {};
     if (snips && typeof snips === 'object') {
       for (const [k, v] of Object.entries(snips)) {
-        if (Array.isArray(v)) {
-          normalizedSnips[String(k)] = v.filter(Boolean);
-        } else if (v) {
-          normalizedSnips[String(k)] = [v];
+        const normK = normalizeVariantKey(k);
+        const list = Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+        if (list.length > 0) {
+          normalizedSnips[normK] = list;
+          normalizedSnips[String(k)] = list;
         }
       }
     }
@@ -717,7 +765,7 @@ class PptxEngine {
     // 2.7 Insert Additional Quotation Snip Slides for variants with multiple snips
     for (let vIdx = 0; vIdx < allVariants.length; vIdx++) {
       const v = allVariants[vIdx];
-      const vId = String(v.id);
+      const vId = normalizeVariantKey(v.id);
       if (!selectedVariantIdSet.has(vId)) continue;
 
       let indices = v.slideIndices;
@@ -727,7 +775,7 @@ class PptxEngine {
       if (!Array.isArray(indices) || indices.length < 3) continue;
 
       const quoteSlideNum = Number(indices[2]);
-      const variantSnipList = normalizedSnips[vId] || [];
+      const variantSnipList = normalizedSnips[vId] || normalizedSnips[String(v.id)] || [];
 
       if (variantSnipList.length > 1) {
         // Find position of the variant's quotation slide in keptSlides
@@ -753,7 +801,8 @@ class PptxEngine {
           const extraSldId = String(60000 + vIdx * 100 + sIdx);
 
           let extraXml = baseSlideXml;
-          const customTitle = (quotationPagesMetadata && quotationPagesMetadata[vId] && quotationPagesMetadata[vId][sIdx]?.title) 
+          const metaForVar = quotationPagesMetadata && (quotationPagesMetadata[vId] || quotationPagesMetadata[String(v.id)]);
+          const customTitle = (metaForVar && metaForVar[sIdx]?.title) 
             || `Quotation (Page ${sIdx + 1})`;
           extraXml = extraXml.replace(
             /<a:t>Quotation<\/a:t>/,
@@ -764,9 +813,10 @@ class PptxEngine {
           let extraExt = 'png';
           if (Buffer.isBuffer(extraSnipFile)) {
             extraBuffer = extraSnipFile;
+            extraExt = detectImageExtension(extraBuffer);
           } else if (typeof extraSnipFile === 'string' && fs.existsSync(extraSnipFile)) {
             extraBuffer = fs.readFileSync(extraSnipFile);
-            extraExt = path.extname(extraSnipFile).replace('.', '') || 'png';
+            extraExt = detectImageExtension(extraBuffer, extraSnipFile);
           }
 
           let extraRelsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout7.xml"/></Relationships>`;
@@ -926,7 +976,7 @@ class PptxEngine {
         }
         if (Array.isArray(indices) && indices.length >= 3) {
           // The 3rd slide is the quotation slide
-          variantQuotationSlideMap.set(Number(indices[2]), String(v.id));
+          variantQuotationSlideMap.set(Number(indices[2]), normalizeVariantKey(v.id));
         }
       }
     }
@@ -989,9 +1039,10 @@ class PptxEngine {
 
         if (Buffer.isBuffer(snipFile)) {
           snipBuffer = snipFile;
+          snipExt = detectImageExtension(snipBuffer);
         } else if (typeof snipFile === 'string' && fs.existsSync(snipFile)) {
           snipBuffer = fs.readFileSync(snipFile);
-          snipExt = path.extname(snipFile).replace('.', '') || 'png';
+          snipExt = detectImageExtension(snipBuffer, snipFile);
         }
 
         if (snipBuffer) {

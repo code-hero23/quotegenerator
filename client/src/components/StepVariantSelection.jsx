@@ -8,17 +8,37 @@ export default function StepVariantSelection({
   onBack,
   onNext
 }) {
+  // Deduplicate variants to guarantee no variant (e.g. LL ELITE) ever appears more than once
+  const uniqueVariants = React.useMemo(() => {
+    const seenIds = new Set();
+    const seenNames = new Set();
+    return variants.filter(v => {
+      const cleanId = (
+        v.id === 'var-surabhi-ll-elite' ||
+        v.id === 'var-ll-elite' ||
+        (v.name && v.name.toUpperCase().includes('ELITE') && !v.name.toUpperCase().includes('ELEGANT'))
+      ) ? 'var-ll-elite' : v.id;
+      const cleanName = cleanId === 'var-ll-elite' ? 'LL ELITE' : String(v.name || '').trim();
+      if (!seenIds.has(cleanId) && !seenNames.has(cleanName.toUpperCase())) {
+        seenIds.add(cleanId);
+        seenNames.add(cleanName.toUpperCase());
+        return true;
+      }
+      return false;
+    });
+  }, [variants]);
 
   const toggleVariant = (id) => {
-    if (selectedVariantIds.includes(id)) {
-      setSelectedVariantIds(selectedVariantIds.filter(vId => vId !== id));
+    const cleanId = (id === 'var-surabhi-ll-elite' || id === 'SURABHI - LL ELITE') ? 'var-ll-elite' : id;
+    if (selectedVariantIds.includes(cleanId)) {
+      setSelectedVariantIds(selectedVariantIds.filter(vId => vId !== cleanId && vId !== id));
     } else {
-      setSelectedVariantIds([...selectedVariantIds, id]);
+      setSelectedVariantIds(Array.from(new Set([...selectedVariantIds, cleanId])));
     }
   };
 
   const selectAll = () => {
-    setSelectedVariantIds(variants.map(v => v.id));
+    setSelectedVariantIds(Array.from(new Set(uniqueVariants.map(v => (v.id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : v.id)))));
   };
 
   const clearAll = () => {
@@ -48,7 +68,7 @@ export default function StepVariantSelection({
             onClick={selectAll}
             className="flex-1 sm:flex-initial px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 transition-colors text-center"
           >
-            Select All ({variants.length})
+            Select All ({uniqueVariants.length})
           </button>
           <button
             type="button"
@@ -58,14 +78,14 @@ export default function StepVariantSelection({
             Clear
           </button>
           <div className="w-full sm:w-auto text-center px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300 text-xs font-bold text-amber-800">
-            {selectedVariantIds.length} of {variants.length} Selected
+            {selectedVariantIds.filter(id => uniqueVariants.some(uv => uv.id === id)).length} of {uniqueVariants.length} Selected
           </div>
         </div>
       </div>
 
       {/* Variants Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {variants.map((variant) => {
+        {uniqueVariants.map((variant) => {
           const isSelected = selectedVariantIds.includes(variant.id);
           const slideIndices = Array.isArray(variant.slideIndices) 
             ? variant.slideIndices 

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   UploadCloud, X, ArrowLeft, ArrowRight, CheckCircle2,
   FileImage, Plus, Trash2, RefreshCw, Eye, Sparkles, Layers,
@@ -25,7 +25,24 @@ export default function StepSnipUpload({
   onBack,
   onNext
 }) {
-  const selectedVariants = variants.filter(v => selectedVariantIds.includes(v.id));
+  const selectedVariants = useMemo(() => {
+    const seenIds = new Set();
+    const seenNames = new Set();
+    return variants.filter(v => {
+      const cleanId = (
+        v.id === 'var-surabhi-ll-elite' ||
+        v.id === 'var-ll-elite' ||
+        (v.name && v.name.toUpperCase().includes('ELITE') && !v.name.toUpperCase().includes('ELEGANT'))
+      ) ? 'var-ll-elite' : v.id;
+      const cleanName = cleanId === 'var-ll-elite' ? 'LL ELITE' : String(v.name || '').trim();
+      if (selectedVariantIds.includes(cleanId) && !seenIds.has(cleanId) && !seenNames.has(cleanName.toUpperCase())) {
+        seenIds.add(cleanId);
+        seenNames.add(cleanName.toUpperCase());
+        return true;
+      }
+      return false;
+    });
+  }, [variants, selectedVariantIds]);
   const fileInputRefs = useRef({});
   const replaceInputRefs = useRef({});
   const [activePreview, setActivePreview] = useState(null); // { url, title }

@@ -237,7 +237,8 @@ export default function App() {
 
   const [selectedVariantIds, setSelectedVariantIds] = useState(() => {
     const raw = initialDraft?.selectedVariantIds || DEFAULT_VARIANT_IDS;
-    return raw.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id);
+    const clean = (Array.isArray(raw) ? raw : []).map(id => (id === 'var-surabhi-ll-elite' || id === 'SURABHI - LL ELITE') ? 'var-ll-elite' : id);
+    return Array.from(new Set(clean));
   });
   const [snipFiles, setSnipFiles] = useState(() => {
     const raw = { ...(initialDraft?.snipFiles || {}) };
@@ -429,23 +430,38 @@ export default function App() {
     try {
       const res = await axios.get(`${API_BASE}/variants`);
       if (res.data && res.data.data && res.data.data.length > 0) {
-        const cleanVariants = res.data.data.map(v => {
-          if (
-            v.id === 'var-surabhi-ll-elite' ||
-            v.name === 'SURABHI - LL ELITE' ||
-            v.name === 'SURABHI  - LL ELITE' ||
-            v.name === 'LL-ELITE' ||
-            (v.name && v.name.includes('SURABHI') && v.name.includes('ELITE'))
-          ) {
-            return {
-              ...v,
-              id: 'var-ll-elite',
-              name: 'LL ELITE'
-            };
+        const seenIds = new Set();
+        const seenNames = new Set();
+        const uniqueVariants = [];
+
+        for (const rawV of res.data.data) {
+          const rawName = String(rawV.name || '').trim().toUpperCase();
+          const isLLElite =
+            rawV.id === 'var-surabhi-ll-elite' ||
+            rawV.id === 'var-ll-elite' ||
+            rawName === 'SURABHI - LL ELITE' ||
+            rawName === 'SURABHI  - LL ELITE' ||
+            rawName === 'LL-ELITE' ||
+            rawName === 'LL ELITE' ||
+            (rawName.includes('ELITE') && !rawName.includes('ELEGANT'));
+
+          const cleanId = isLLElite ? 'var-ll-elite' : rawV.id;
+          const cleanName = isLLElite ? 'LL ELITE' : rawV.name;
+
+          if (!seenIds.has(cleanId) && !seenNames.has(cleanName.toUpperCase())) {
+            seenIds.add(cleanId);
+            seenNames.add(cleanName.toUpperCase());
+            uniqueVariants.push({
+              ...rawV,
+              id: cleanId,
+              name: cleanName,
+              ...(isLLElite ? { slideIndices: [7, 8, 9] } : {})
+            });
           }
-          return v;
-        });
-        setVariants(cleanVariants);
+        }
+        if (uniqueVariants.length > 0) {
+          setVariants(uniqueVariants);
+        }
       }
     } catch (e) {
       console.warn('Using default template variants fallback:', e.message);
@@ -538,7 +554,7 @@ export default function App() {
 
     // 3. Restore selected variants
     if (quote.selectedVariantIds && Array.isArray(quote.selectedVariantIds) && quote.selectedVariantIds.length > 0) {
-      setSelectedVariantIds(quote.selectedVariantIds.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id));
+      setSelectedVariantIds(Array.from(new Set(quote.selectedVariantIds.map(id => id === 'var-surabhi-ll-elite' ? 'var-ll-elite' : id))));
     } else if (quote.selectedVariants) {
       const vids = Array.isArray(quote.selectedVariants)
         ? quote.selectedVariants.map(v => {
@@ -546,7 +562,7 @@ export default function App() {
             return rawId === 'var-surabhi-ll-elite' ? 'var-ll-elite' : rawId;
           }).filter(Boolean)
         : [];
-      if (vids.length > 0) setSelectedVariantIds(vids);
+      if (vids.length > 0) setSelectedVariantIds(Array.from(new Set(vids)));
     }
 
     // 4. Restore Unit Pages

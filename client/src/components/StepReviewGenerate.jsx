@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Download, ArrowLeft, Cpu, CheckCircle2, 
   Layers, User, Sparkles, Loader2, FileText, Eye, Maximize2, PlusCircle,

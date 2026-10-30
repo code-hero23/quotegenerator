@@ -474,6 +474,41 @@ async function syncFallbackDataToPostgres() {
     }
 
     // 3. Ensure variants exist in Postgres without overwriting existing variants
+    // Deduplicate and sanitize any legacy or duplicate variant records (e.g. var-surabhi-ll-elite vs var-ll-elite)
+    try {
+      const allDbVariants = await prisma.variant.findMany({ orderBy: { createdAt: 'asc' } });
+      const seenCanonicalIds = new Set();
+      for (const v of allDbVariants) {
+        const rawName = String(v.name || '').trim().toUpperCase();
+        const isLLElite = (
+          v.id === 'var-surabhi-ll-elite' ||
+          v.id === 'var-ll-elite' ||
+          rawName === 'SURABHI - LL ELITE' ||
+          rawName === 'SURABHI  - LL ELITE' ||
+          rawName === 'LL-ELITE' ||
+          rawName === 'LL ELITE' ||
+          (rawName.includes('ELITE') && !rawName.includes('ELEGANT'))
+        );
+        const canonicalId = isLLElite ? 'var-ll-elite' : v.id;
+
+        if (seenCanonicalIds.has(canonicalId)) {
+          // Duplicate row detected in DB! Safely remove it so it never shows twice
+          await prisma.variant.delete({ where: { id: v.id } });
+          console.log(`🧹 Cleaned up duplicate variant row from database: ${v.id} (${v.name})`);
+        } else {
+          seenCanonicalIds.add(canonicalId);
+          if (isLLElite && (v.id !== 'var-ll-elite' || v.name !== 'LL ELITE')) {
+            await prisma.$executeRawUnsafe(
+              `UPDATE "variants" SET "id" = 'var-ll-elite', "name" = 'LL ELITE' WHERE "id" = $1`,
+              v.id
+            );
+          }
+        }
+      }
+    } catch (cleanErr) {
+      console.warn('Notice: Variant deduplication check skipped:', cleanErr.message);
+    }
+
     const variantCount = await prisma.variant.count();
     if (variantCount === 0) {
       for (const v of (store.variants || defaultVariants)) {
@@ -636,20 +671,56 @@ const dbService = {
   isPostgresReady: () => isPostgresConnected,
 
   async getVariants() {
+    let rawList = [];
     if (isPostgresConnected) {
       try {
         const variants = await prisma.variant.findMany({
           orderBy: { createdAt: 'asc' }
         });
         if (variants && variants.length > 0) {
-          return variants.map(normalizeVariantRecord);
+          rawList = variants.map(normalizeVariantRecord);
         }
       } catch (e) {
         console.warn('Postgres getVariants error, falling back:', e.message);
       }
     }
-    const store = loadLocalStore();
-    return (store.variants || defaultVariants).map(normalizeVariantRecord);
+    if (rawList.length === 0) {
+      const store = loadLocalStore();
+      rawList = (store.variants || defaultVariants).map(normalizeVariantRecord);
+    }
+
+    // Strictly deduplicate so that neither id nor name can ever be duplicated
+    const seenIds = new Set();
+    const seenNames = new Set();
+    const uniqueVariants = [];
+
+    for (const v of rawList) {
+      const rawName = String(v.name || '').trim().toUpperCase();
+      const isLLElite =
+        v.id === 'var-surabhi-ll-elite' ||
+        v.id === 'var-ll-elite' ||
+        rawName === 'SURABHI - LL ELITE' ||
+        rawName === 'SURABHI  - LL ELITE' ||
+        rawName === 'LL-ELITE' ||
+        rawName === 'LL ELITE' ||
+        (rawName.includes('ELITE') && !rawName.includes('ELEGANT'));
+
+      const cleanId = isLLElite ? 'var-ll-elite' : v.id;
+      const cleanName = isLLElite ? 'LL ELITE' : v.name;
+
+      if (!seenIds.has(cleanId) && !seenNames.has(cleanName.toUpperCase())) {
+        seenIds.add(cleanId);
+        seenNames.add(cleanName.toUpperCase());
+        uniqueVariants.push({
+          ...v,
+          id: cleanId,
+          name: cleanName,
+          ...(isLLElite ? { slideIndices: [7, 8, 9] } : {})
+        });
+      }
+    }
+
+    return uniqueVariants;
   },
 
   async getVariantById(id) {

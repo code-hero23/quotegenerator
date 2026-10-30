@@ -236,6 +236,25 @@ function convertWithLibreOffice(pptxPath, pdfPath) {
       ? `file://${normalizedProfilePath}`
       : `file:///${normalizedProfilePath}`;
 
+    // Pre-configure high-quality, lossless PDF export settings in the isolated profile
+    // This prevents LibreOffice from downsampling images to 150 DPI or applying lossy JPEG compression
+    try {
+      const userDir = path.join(userProfileDir, 'user');
+      fs.mkdirSync(userDir, { recursive: true });
+      const regXml = `<?xml version="1.0" encoding="UTF-8"?>
+<oor:items xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <item oor:path="/org.openoffice.Office.Common/Filter/PDF/Export">
+    <prop oor:name="Quality" oor:op="fuse"><value>100</value></prop>
+    <prop oor:name="ReduceImageResolution" oor:op="fuse"><value>false</value></prop>
+    <prop oor:name="MaxImageResolution" oor:op="fuse"><value>300</value></prop>
+    <prop oor:name="UseLosslessCompression" oor:op="fuse"><value>true</value></prop>
+  </item>
+</oor:items>`;
+      fs.writeFileSync(path.join(userDir, 'registrymodifications.xcu'), regXml, 'utf-8');
+    } catch (prefErr) {
+      console.warn('Notice: Could not write high-quality PDF preferences:', prefErr.message);
+    }
+
     const cleanupProfile = () => {
       try {
         if (fs.existsSync(userProfileDir)) {

@@ -130,7 +130,7 @@ export function convertTableToImageFile(tableData, options = {}) {
       }
 
       const title = options.title || '';
-      const scale = 2; // 2x Retina scale for crisp presentation fonts
+      const scale = 3; // 3x Ultra-HD Retina scale for razor-sharp presentation text
       const paddingX = 18;
       const paddingY = 12;
       const headerHeight = 44;

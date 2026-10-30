@@ -6,6 +6,7 @@ import {
   ChevronDown, Check, Files
 } from 'lucide-react';
 import { hasTableClipboardData, parseClipboardTable, convertTableToImageFile } from '../utils/tableToImage';
+import { optimizeSnipFile } from '../utils/imageOptimizer';
 
 const COMMON_PAGE_TITLES = [
   'Main Quotation',
@@ -136,17 +137,18 @@ export default function StepSnipUpload({
   };
 
   // Add an extra quotation page to a variant (optionally with an attached file)
-  const handleAddExtraPage = (variantId, customTitle = null, initialFile = null) => {
+  const handleAddExtraPage = async (variantId, customTitle = null, initialFile = null) => {
+    const optimizedFile = initialFile ? await optimizeSnipFile(initialFile) : null;
     const currentPages = getPages(variantId);
     const newPageNum = currentPages.length + 1;
     const defaultTitle = customTitle || COMMON_PAGE_TITLES[Math.min(newPageNum - 1, COMMON_PAGE_TITLES.length - 1)] || `Quotation Page ${newPageNum}`;
-    const previewUrl = initialFile ? URL.createObjectURL(initialFile) : null;
+    const previewUrl = optimizedFile ? URL.createObjectURL(optimizedFile) : null;
 
     const newPage = {
       id: `snip_${variantId}_${Date.now()}_${Math.random().toString(36).substring(4)}`,
       pageNumber: newPageNum,
       title: defaultTitle,
-      file: initialFile || null,
+      file: optimizedFile || null,
       previewUrl,
       name: initialFile?.name || '',
       size: initialFile?.size || 0
@@ -215,8 +217,9 @@ export default function StepSnipUpload({
   };
 
   // Attach a file to a specific page
-  const handleSetPageFile = (variantId, pageId, file) => {
-    if (!file) return;
+  const handleSetPageFile = async (variantId, pageId, rawFile) => {
+    if (!rawFile) return;
+    const file = await optimizeSnipFile(rawFile);
     const previewUrl = URL.createObjectURL(file);
 
     setSnipFiles(prev => {

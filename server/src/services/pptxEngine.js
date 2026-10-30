@@ -509,7 +509,7 @@ class PptxEngine {
                     <p:nvPr/>
                   </p:nvPicPr>
                   <p:blipFill>
-                    <a:blip r:embed="${snipRelId}"/>
+                    <a:blip r:embed="${snipRelId}" cstate="print"/>
                     <a:stretch><a:fillRect/></a:stretch>
                   </p:blipFill>
                   <p:spPr>
@@ -542,7 +542,7 @@ class PptxEngine {
                     <p:nvPr/>
                   </p:nvPicPr>
                   <p:blipFill>
-                    <a:blip r:embed="${snipRelId}"/>
+                    <a:blip r:embed="${snipRelId}" cstate="print"/>
                     <a:stretch><a:fillRect/></a:stretch>
                   </p:blipFill>
                   <p:spPr>
@@ -663,7 +663,7 @@ class PptxEngine {
                   <p:nvPr/>
                 </p:nvPicPr>
                 <p:blipFill>
-                  <a:blip r:embed="${snipRelId}"/>
+                  <a:blip r:embed="${snipRelId}" cstate="print"/>
                   <a:stretch><a:fillRect/></a:stretch>
                 </p:blipFill>
                 <p:spPr>
@@ -696,7 +696,7 @@ class PptxEngine {
                   <p:nvPr/>
                 </p:nvPicPr>
                 <p:blipFill>
-                  <a:blip r:embed="${snipRelId}"/>
+                  <a:blip r:embed="${snipRelId}" cstate="print"/>
                   <a:stretch><a:fillRect/></a:stretch>
                 </p:blipFill>
                 <p:spPr>
@@ -838,7 +838,7 @@ class PptxEngine {
                   <p:nvPr/>
                 </p:nvPicPr>
                 <p:blipFill>
-                  <a:blip r:embed="${snipRelId}"/>
+                  <a:blip r:embed="${snipRelId}" cstate="print"/>
                   <a:stretch><a:fillRect/></a:stretch>
                 </p:blipFill>
                 <p:spPr>
@@ -1075,7 +1075,7 @@ class PptxEngine {
                 <p:nvPr/>
               </p:nvPicPr>
               <p:blipFill>
-                <a:blip r:embed="${snipRelId}"/>
+                <a:blip r:embed="${snipRelId}" cstate="print"/>
                 <a:stretch><a:fillRect/></a:stretch>
               </p:blipFill>
               <p:spPr>

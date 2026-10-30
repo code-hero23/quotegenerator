@@ -5,6 +5,7 @@ import {
   Copy, Clipboard, FileSpreadsheet
 } from 'lucide-react';
 import { hasTableClipboardData, parseClipboardTable, convertTableToImageFile } from '../utils/tableToImage';
+import { optimizeSnipFile } from '../utils/imageOptimizer';
 
 const COMMON_CATEGORIES = [
   'Modular Kitchen',
@@ -168,8 +169,9 @@ export default function StepUnitSnips({
   };
 
   // Handle file drop/upload
-  const handleFileChange = (pageId, file) => {
-    if (!file) return;
+  const handleFileChange = async (pageId, rawFile) => {
+    if (!rawFile) return;
+    const file = await optimizeSnipFile(rawFile);
     const previewUrl = URL.createObjectURL(file);
     setUnitPages(prev => prev.map(p => {
       if (p.id === pageId) {

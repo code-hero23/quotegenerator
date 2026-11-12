@@ -13,7 +13,7 @@ The application operates on your 29-slide master template: `Master-Template.pptx
 - **Slides 2 – 6**: Introduction, Design Philosophy, Process & Portfolio
 - **Slides 7 – 9**: Variant 1 — `LL ELITE` (Divider, Specs, Quotation Slide)
 - **Slides 10 – 12**: Variant 2 — `CAPRICOAST MATTE` (Divider, Specs, Quotation Slide)
-- **Slides 13 – 15**: Variant 3 — `CAPRICOST GLOSSY` (Divider, Specs, Quotation Slide)
+- **Slides 13 – 15**: Variant 3 — `CAPRICOAST GLOSSY` (Divider, Specs, Quotation Slide)
 - **Slides 16 – 18**: Variant 4 — `ELEGANT SURABHI` (Divider, Specs, Quotation Slide)
 - **Slides 19 – 21**: Variant 5 — `4X TUFF GLOSS` (Divider, Specs, Quotation Slide)
 - **Slides 22 – 29**: Execution Timelines, Inclusions & Exclusions, Payment Terms, Terms & Conditions, FAQs, and Thank You closing

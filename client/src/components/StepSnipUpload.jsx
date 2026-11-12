@@ -301,9 +301,18 @@ export default function StepSnipUpload({
   const handleCopySnip = async (page, variant) => {
     if (!page.file && !page.previewUrl) return;
     try {
-      if (page.file && navigator.clipboard && window.ClipboardItem) {
+      let blob = page.file;
+      if (!blob && page.previewUrl) {
+        try {
+          const res = await fetch(page.previewUrl);
+          blob = await res.blob();
+        } catch (fetchErr) {
+          console.warn('Failed to fetch blob for copy:', fetchErr);
+        }
+      }
+      if (blob && navigator.clipboard && window.ClipboardItem) {
         await navigator.clipboard.write([
-          new ClipboardItem({ [page.file.type || 'image/png']: page.file })
+          new ClipboardItem({ [blob.type || 'image/png']: blob })
         ]);
         showToast(`📋 Copied snip for "${variant.name}" to clipboard!`);
       } else {
@@ -329,9 +338,12 @@ export default function StepSnipUpload({
       const targetVariant = selectedVariants.find(v => v.id === activeVariantId) || selectedVariants[0];
       if (!targetVariant) return;
 
-      // Find target page: activePageId, or first empty page, or create new page
+      // Smart Target Page Resolution:
+      // 1. If currently active page is empty, use it.
+      // 2. Otherwise find the first available empty page in this variant.
+      // 3. If all pages already have attachments, auto-create a new quotation page so we NEVER overwrite previous work!
       const currentPages = getPages(targetVariant.id);
-      let targetPage = currentPages.find(p => p.id === activePageId);
+      let targetPage = currentPages.find(p => p.id === activePageId && !p.file && !p.previewUrl);
       if (!targetPage) {
         targetPage = currentPages.find(p => !p.file && !p.previewUrl);
       }
@@ -352,7 +364,7 @@ export default function StepSnipUpload({
           handleSetPageFile(targetVariant.id, targetPage.id, imageFile);
           showToast(`📋 Screenshot attached to "${targetVariant.name}" (Page ${targetPage.pageNumber})!`);
         } else {
-          const added = handleAddExtraPage(targetVariant.id, null, imageFile);
+          const added = await handleAddExtraPage(targetVariant.id, null, imageFile);
           showToast(`📋 Screenshot attached to newly added Page ${added.pageNumber} of "${targetVariant.name}"!`);
         }
         return;
@@ -375,8 +387,8 @@ export default function StepSnipUpload({
               handleSetPageFile(targetVariant.id, targetPage.id, convertedFile);
               showToast(`📊 Excel table converted & attached to "${targetVariant.name}" (Page ${targetPage.pageNumber})!`);
             } else {
-              const added = handleAddExtraPage(targetVariant.id, null, convertedFile);
-              showToast(`📊 Excel table converted & attached to Page ${added.pageNumber} of "${targetVariant.name}"!`);
+              const added = await handleAddExtraPage(targetVariant.id, null, convertedFile);
+              showToast(`📊 Excel table converted & attached to newly added Page ${added.pageNumber} of "${targetVariant.name}"!`);
             }
             return;
           }

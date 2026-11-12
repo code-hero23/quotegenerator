@@ -1,5 +1,5 @@
 // Cookscape Quote Generator - Service Worker
-const CACHE_NAME = 'cookscape-pwa-v2';
+const CACHE_NAME = 'cookscape-pwa-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -81,7 +81,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets (CSS, JS, Fonts, Images) - Stale-While-Revalidate
+  // Script & Style assets (.js, .css) - Network First with Cache Fallback
+  // Prevents stale bundle chunk mismatches causing blank front page or broken UI after updates
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(async () => {
+          const cached = await caches.match(request);
+          if (cached) return cached;
+          return Response.error();
+        })
+    );
+    return;
+  }
+
+  // Media & static assets (Images, Fonts) - Stale-While-Revalidate
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const fetchPromise = fetch(request)
@@ -93,7 +114,7 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // If network fetch fails, nothing extra to do; cachedResponse will be returned
+          // If network fetch fails, cachedResponse will be returned
         });
 
       return cachedResponse || fetchPromise;

@@ -122,13 +122,22 @@ export default function StepAccessoriesSnips({
 
   // Copy snip image to clipboard (Ctrl+C helper)
   const handleCopySnip = async (page) => {
-    if (!page.file) return;
+    if (!page.file && !page.previewUrl) return;
     try {
-      if (navigator.clipboard && window.ClipboardItem) {
+      let blob = page.file;
+      if (!blob && page.previewUrl) {
+        try {
+          const res = await fetch(page.previewUrl);
+          blob = await res.blob();
+        } catch (fetchErr) {
+          console.warn('Failed to fetch blob for copy:', fetchErr);
+        }
+      }
+      if (blob && navigator.clipboard && window.ClipboardItem) {
         await navigator.clipboard.write([
-          new ClipboardItem({ [page.file.type || 'image/png']: page.file })
+          new ClipboardItem({ [blob.type || 'image/png']: blob })
         ]);
-        showToast(`📋 Copied accessory image for "${page.title}" to clipboard!`);
+        showToast(`📋 Copied accessory image for "${page.title || 'Accessory'}" to clipboard!`);
       } else {
         showToast('⚠️ Clipboard copy is not supported in this browser', 'error');
       }
@@ -148,8 +157,12 @@ export default function StepAccessoriesSnips({
 
       if (!e.clipboardData) return;
 
-      const targetPage = currentPage || accessoryPages[0];
-      if (!targetPage) return;
+      // Smart Target Resolution:
+      // 1. If currently viewed page is empty, use it.
+      // 2. Otherwise look for another empty page.
+      // 3. If all are populated, auto-create a new accessory card so we NEVER overwrite previous work!
+      const isCurrentPageEmpty = currentPage && !currentPage.file && !currentPage.previewUrl;
+      let targetPage = isCurrentPageEmpty ? currentPage : accessoryPages.find(p => !p.file && !p.previewUrl);
 
       // 1. Check for image in clipboard
       const items = e.clipboardData.items || [];
@@ -163,8 +176,29 @@ export default function StepAccessoriesSnips({
 
       if (imageFile) {
         e.preventDefault();
-        handleFileChange(targetPage.id, imageFile);
-        showToast(`📋 Screenshot attached to "${targetPage.title}"!`);
+        if (targetPage) {
+          handleFileChange(targetPage.id, imageFile);
+          const targetIndex = accessoryPages.findIndex(p => p.id === targetPage.id);
+          if (targetIndex >= 0) setActivePageIndex(targetIndex);
+          showToast(`📋 Screenshot attached to "${targetPage.title || 'Accessory Card'}"!`);
+        } else {
+          // Auto-create new accessory page
+          const optimized = await optimizeSnipFile(imageFile);
+          const previewUrl = URL.createObjectURL(optimized);
+          const newIndex = accessoryPages.length + 1;
+          const defaultCategory = ACCESSORY_CATEGORIES[(newIndex - 1) % ACCESSORY_CATEGORIES.length] || 'Kitchen Hardware & Baskets';
+          const newPage = {
+            id: `acc_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+            title: `Accessory Page ${newIndex}`,
+            category: defaultCategory,
+            notes: '',
+            file: optimized,
+            previewUrl
+          };
+          setAccessoryPages(prev => [...prev, newPage]);
+          setActivePageIndex(accessoryPages.length);
+          showToast(`📋 Screenshot attached to newly added page: "${newPage.title}"!`);
+        }
         return;
       }
 
@@ -175,12 +209,33 @@ export default function StepAccessoriesSnips({
           const tableData = parseClipboardTable(e.clipboardData);
           if (tableData && tableData.allRows.length > 0) {
             showToast('⏳ Converting Excel spreadsheet cells into table image...', 'info');
+            const pageNum = targetPage ? (accessoryPages.findIndex(p => p.id === targetPage.id) + 1) : (accessoryPages.length + 1);
+            const cardCategory = targetPage ? targetPage.category : (ACCESSORY_CATEGORIES[(accessoryPages.length) % ACCESSORY_CATEGORIES.length] || 'Hardware Specifications');
             const convertedFile = await convertTableToImageFile(tableData, {
-              title: `${targetPage.title} - Hardware Specifications`,
-              filename: `Excel_Acc_${targetPage.category.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
+              title: `${targetPage?.title || `Accessory Page ${pageNum}`} - Hardware Specifications`,
+              filename: `Excel_Acc_${cardCategory.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`
             });
-            handleFileChange(targetPage.id, convertedFile);
-            showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${targetPage.title}"!`);
+
+            if (targetPage) {
+              handleFileChange(targetPage.id, convertedFile);
+              const targetIndex = accessoryPages.findIndex(p => p.id === targetPage.id);
+              if (targetIndex >= 0) setActivePageIndex(targetIndex);
+              showToast(`📊 Excel table (${tableData.rowCount} rows × ${tableData.colCount} cols) converted & attached to "${targetPage.title || `Accessory Page ${pageNum}`}"!`);
+            } else {
+              const previewUrl = URL.createObjectURL(convertedFile);
+              const newIndex = accessoryPages.length + 1;
+              const newPage = {
+                id: `acc_${Date.now()}_${Math.random().toString(36).substring(5)}`,
+                title: `Accessory Page ${newIndex}`,
+                category: cardCategory,
+                notes: '',
+                file: convertedFile,
+                previewUrl
+              };
+              setAccessoryPages(prev => [...prev, newPage]);
+              setActivePageIndex(accessoryPages.length);
+              showToast(`📊 Excel table converted & attached to newly added "${newPage.title}"!`);
+            }
             return;
           }
         } catch (err) {

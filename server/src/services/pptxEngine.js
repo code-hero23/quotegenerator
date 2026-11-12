@@ -1006,6 +1006,9 @@ class PptxEngine {
       // Normalize any legacy presentation slide text to "LL ELITE"
       slideXml = slideXml.replace(/SURABHI\s*-?\s*LL ELITE/gi, 'LL ELITE');
 
+      // Normalize CAPRICOST to CAPRICOAST across all presentation slides
+      slideXml = slideXml.replaceAll('CAPRICOST', 'CAPRICOAST');
+
       // If Cover Slide (slide 1), apply all client & rep tag replacements and enforce perfect alignment
       if (slide.displayIndex === 1) {
         for (const item of coverReplacements) {
@@ -1014,7 +1017,17 @@ class PptxEngine {
           }
         }
 
-        // Apply precise alignment and geometry transforms for Client & Architect cards
+        // Apply precise alignment, geometry transforms, and direct text injection for Client & Architect cards
+        const shapeValueMap = {
+          '73': clientName,
+          '74': clientContact,
+          '76': location,
+          '77': dateStr,
+          '80': repName,
+          '79': repContact,
+          '78': repEmail
+        };
+
         for (const item of shapeAlignments) {
           const spRegex = new RegExp(`(<p:sp>(?:(?!<\\/p:sp>)[\\s\\S])*?id="${item.id}"[\\s\\S]*?<\\/p:sp>)`, 'g');
           slideXml = slideXml.replace(spRegex, (fullSp) => {
@@ -1025,6 +1038,34 @@ class PptxEngine {
             if (item.ext) {
               updatedSp = updatedSp.replace(/<a:ext\s+cx="\d+"\s+cy="\d+"\s*\/>/, `<a:ext cx="${item.ext.cx}" cy="${item.ext.cy}"/>`);
             }
+
+            // If this shape is one of the data value boxes, ensure normAutofit and inject value directly
+            const targetVal = shapeValueMap[item.id];
+            if (targetVal !== undefined) {
+              // Ensure bodyPr has normAutofit so long text doesn't overflow or overlap fields below
+              if (updatedSp.includes('<a:bodyPr')) {
+                if (!updatedSp.includes('<a:normAutofit') && !updatedSp.includes('<a:spAutoFit')) {
+                  if (updatedSp.includes('/>')) {
+                    updatedSp = updatedSp.replace(/<a:bodyPr([^>]*)\/>/, '<a:bodyPr$1><a:normAutofit/></a:bodyPr>');
+                  }
+                  if (!updatedSp.includes('<a:normAutofit')) {
+                    updatedSp = updatedSp.replace(/<a:bodyPr([^>]*)>/, '<a:bodyPr$1><a:normAutofit/>');
+                  }
+                }
+              }
+
+              // Replace text inside <p:txBody> without breaking formatting run tags
+              // In case PowerPoint split the text across multiple runs, put full value in first <a:t> and clear the rest
+              let firstFound = false;
+              updatedSp = updatedSp.replace(/<a:t>[\s\S]*?<\/a:t>/g, () => {
+                if (!firstFound) {
+                  firstFound = true;
+                  return `<a:t>${targetVal}</a:t>`;
+                }
+                return '<a:t></a:t>';
+              });
+            }
+
             return updatedSp;
           });
         }

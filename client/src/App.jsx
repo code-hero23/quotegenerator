@@ -52,7 +52,7 @@ const fallbackVariants = [
   },
   {
     id: 'var-capricost-glossy',
-    name: 'CAPRICOST GLOSSY',
+    name: 'CAPRICOAST GLOSSY',
     category: 'High Gloss Elegance',
     description: 'High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.',
     specs: {
@@ -445,8 +445,13 @@ export default function App() {
             rawName === 'LL ELITE' ||
             (rawName.includes('ELITE') && !rawName.includes('ELEGANT'));
 
-          const cleanId = isLLElite ? 'var-ll-elite' : rawV.id;
-          const cleanName = isLLElite ? 'LL ELITE' : rawV.name;
+          const isCapricoastGlossy =
+            rawV.id === 'var-capricoast-glossy' ||
+            rawV.id === 'var-capricost-glossy' ||
+            (rawName.includes('CAPRICO') && rawName.includes('GLOSS'));
+
+          const cleanId = isLLElite ? 'var-ll-elite' : (isCapricoastGlossy ? 'var-capricost-glossy' : rawV.id);
+          const cleanName = isLLElite ? 'LL ELITE' : (isCapricoastGlossy ? 'CAPRICOAST GLOSSY' : rawV.name);
 
           if (!seenIds.has(cleanId) && !seenNames.has(cleanName.toUpperCase())) {
             seenIds.add(cleanId);

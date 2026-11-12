@@ -41,7 +41,7 @@ const defaultVariants = [
   },
   {
     id: 'var-capricost-glossy',
-    name: 'CAPRICOST GLOSSY',
+    name: 'CAPRICOAST GLOSSY',
     category: 'High Gloss Elegance',
     description: 'High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.',
     price: 430000,

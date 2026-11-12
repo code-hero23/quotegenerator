@@ -262,11 +262,12 @@ export default function StepUnitSnips({
 
       if (imageFile) {
         e.preventDefault();
+        const optimized = await optimizeSnipFile(imageFile);
         if (targetPage && !targetPage.file && !targetPage.previewUrl) {
-          handleFileChange(targetPage.id, imageFile);
+          handleFileChange(targetPage.id, optimized);
           showToast(`📋 Screenshot attached to "${targetPage.title || 'Unit'}"!`);
         } else {
-          // If all visible pages have attachments, auto-create a new unit page
+          // If all visible pages have attachments, auto-create a new unit page so previous snips are NEVER overwritten
           const newIndex = unitPages.length + 1;
           const defaultCategory = COMMON_CATEGORIES[(newIndex - 1) % COMMON_CATEGORIES.length] || 'Modular Kitchen';
           const targetVariantId = selectedVariantFilter === 'all' 
@@ -278,8 +279,8 @@ export default function StepUnitSnips({
             title: `Unit ${newIndex} - ${defaultCategory}`,
             category: defaultCategory,
             notes: '',
-            file: imageFile,
-            previewUrl: URL.createObjectURL(imageFile)
+            file: optimized,
+            previewUrl: URL.createObjectURL(optimized)
           };
           setUnitPages(prev => [...prev, newPage]);
           setActivePageId(newPage.id);

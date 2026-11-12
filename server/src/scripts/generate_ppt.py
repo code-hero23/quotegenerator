@@ -8,6 +8,12 @@ import os
 import re
 import shutil
 import zipfile
+import xml.sax.saxutils as saxutils
+
+def escape_xml(s):
+    if s is None:
+        return ''
+    return saxutils.escape(str(s).strip())
 
 def generate_ppt(payload_path):
     with open(payload_path, 'r', encoding='utf-8') as f:
@@ -114,15 +120,15 @@ def generate_ppt(payload_path):
             f.write(ct_content)
 
         # 4. Replacements: Footer and Cover Page
-        client_name = client_info.get('name', 'Client')
-        client_contact = client_info.get('contact', client_info.get('contactNumber', ''))
-        client_email = client_info.get('email', '')
-        location = client_info.get('location', '')
-        date_str = client_info.get('date', '')
+        client_name = escape_xml(client_info.get('name', 'Client'))
+        client_contact = escape_xml(client_info.get('contact', client_info.get('contactNumber', '')))
+        client_email = escape_xml(client_info.get('email', ''))
+        location = escape_xml(client_info.get('location', ''))
+        date_str = escape_xml(client_info.get('date', ''))
 
-        rep_name = rep_info.get('name', '')
-        rep_contact = rep_info.get('contact', rep_info.get('contactNumber', ''))
-        rep_email = rep_info.get('email', '')
+        rep_name = escape_xml(rep_info.get('name', ''))
+        rep_contact = escape_xml(rep_info.get('contact', rep_info.get('contactNumber', '')))
+        rep_email = escape_xml(rep_info.get('email', ''))
 
         new_footer = f"{client_name} | {location} | {client_contact}"
         old_footer = "Mr. Aravindan | Individual Villa Adyar | 7418414780"
@@ -143,17 +149,41 @@ def generate_ppt(payload_path):
             # Footer
             slide_xml = slide_xml.replace(old_footer, new_footer)
 
+            # Normalize CAPRICOST to CAPRICOAST
+            slide_xml = slide_xml.replace('CAPRICOST', 'CAPRICOAST')
+
             # Cover slide (slide 1)
             if s['displayIndex'] == 1:
-                slide_xml = re.sub(r'Mr\.\s*Aravindan', client_name.strip(), slide_xml)
-                slide_xml = re.sub(r'7418414780', client_contact.strip(), slide_xml)
-                slide_xml = re.sub(r'Webapp\.cookscape@gmail\.com', client_email.strip(), slide_xml)
-                slide_xml = re.sub(r'Individual Villa Adyar', location.strip(), slide_xml)
+                # Standard {{TAGS}}
+                slide_xml = re.sub(r'\{\{CLIENT_NAME\}\}', client_name, slide_xml)
+                slide_xml = re.sub(r'\{\{CLIENT_CONTACT\}\}', client_contact, slide_xml)
+                slide_xml = re.sub(r'\{\{CLIENT_EMAIL\}\}', client_email, slide_xml)
+                slide_xml = re.sub(r'\{\{LOCATION\}\}', location, slide_xml)
+                slide_xml = re.sub(r'\{\{DATE\}\}', date_str, slide_xml)
+                slide_xml = re.sub(r'\{\{REP_NAME\}\}', rep_name, slide_xml)
+                slide_xml = re.sub(r'\{\{REP_CONTACT\}\}', rep_contact, slide_xml)
+                slide_xml = re.sub(r'\{\{REP_EMAIL\}\}', rep_email, slide_xml)
+
+                # Original Master-Template values
+                slide_xml = re.sub(r'Mr\.\s*Aravindan', client_name, slide_xml)
+                slide_xml = re.sub(r'7418414780', client_contact, slide_xml)
+                slide_xml = re.sub(r'Webapp\.cookscape@gmail\.com', client_email, slide_xml)
+                slide_xml = re.sub(r'Individual Villa Adyar', location, slide_xml)
                 if date_str:
-                    slide_xml = re.sub(r'10/10/2026', date_str.strip(), slide_xml)
-                slide_xml = re.sub(r'Mr\.\s*Abishek', rep_name.strip(), slide_xml)
-                slide_xml = re.sub(r'93611\s*84787', rep_contact.strip(), slide_xml)
-                slide_xml = re.sub(r'designs\.cookscape@gmail\.com', rep_email.strip(), slide_xml)
+                    slide_xml = re.sub(r'10/10/2026', date_str, slide_xml)
+                slide_xml = re.sub(r'Mr\.\s*Abishek', rep_name, slide_xml)
+                slide_xml = re.sub(r'93611\s*84787', rep_contact, slide_xml)
+                slide_xml = re.sub(r'designs\.cookscape@gmail\.com', rep_email, slide_xml)
+
+                shape_value_map = {
+                    '73': client_name,
+                    '74': client_contact,
+                    '76': location,
+                    '77': date_str,
+                    '80': rep_name,
+                    '79': rep_contact,
+                    '78': rep_email
+                }
 
                 # Alignment definitions
                 alignments = [
@@ -187,6 +217,20 @@ def generate_ppt(payload_path):
                             s_text = re.sub(r'<a:off\s+x="\d+"\s+y="\d+"\s*/>', f'<a:off x="{off[0]}" y="{off[1]}"/>', s_text)
                         if ext:
                             s_text = re.sub(r'<a:ext\s+cx="\d+"\s+cy="\d+"\s*/>', f'<a:ext cx="{ext[0]}" cy="{ext[1]}"/>', s_text)
+                        
+                        target_val = shape_value_map.get(sp_id)
+                        if target_val is not None:
+                            if '<a:bodyPr' in s_text and '<a:normAutofit' not in s_text and '<a:spAutoFit' not in s_text:
+                                s_text = re.sub(r'<a:bodyPr([^>]*)\/>', r'<a:bodyPr\1><a:normAutofit/></a:bodyPr>', s_text)
+                                if '<a:normAutofit' not in s_text:
+                                    s_text = re.sub(r'<a:bodyPr([^>]*)>', r'<a:bodyPr\1><a:normAutofit/>', s_text)
+                            first = [True]
+                            def sub_t(tm):
+                                if first[0]:
+                                    first[0] = False
+                                    return f'<a:t>{target_val}</a:t>'
+                                return '<a:t></a:t>'
+                            s_text = re.sub(r'<a:t>[\s\S]*?</a:t>', sub_t, s_text)
                         return s_text
                     pattern = rf'(<p:sp>(?:(?!</p:sp>)[\s\S])*?id="{sp_id}"[\s\S]*?</p:sp>)'
                     slide_xml = re.sub(pattern, replace_sp, slide_xml)

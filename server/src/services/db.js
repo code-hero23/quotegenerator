@@ -50,7 +50,7 @@ const defaultVariants = [
   },
   {
     id: 'var-capricost-glossy',
-    name: 'CAPRICOST GLOSSY',
+    name: 'CAPRICOAST GLOSSY',
     category: 'High Gloss Elegance',
     description: 'High-density moisture-resistant boards with reflective high-gloss finish and precision edge-banding.',
     specs: {
@@ -655,7 +655,7 @@ function normalizeVariantRecord(v) {
     return { ...v, id: 'var-capricoast-matte', slideIndices: [10, 11, 12] };
   }
   if (firstSlide === 13 || rawName.includes('GLOSSY')) {
-    return { ...v, id: 'var-capricost-glossy', slideIndices: [13, 14, 15] };
+    return { ...v, id: 'var-capricost-glossy', name: 'CAPRICOAST GLOSSY', slideIndices: [13, 14, 15] };
   }
   if (firstSlide === 16 || rawName.includes('ELEGANT SURABHI')) {
     return { ...v, id: 'var-elegant-surabhi', slideIndices: [16, 17, 18] };

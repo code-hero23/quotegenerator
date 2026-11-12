@@ -17,7 +17,7 @@ async function runTest() {
   const allVariants = [
     { id: 'var_1', name: 'LL ELITE', slideIndices: [7, 8, 9] },
     { id: 'var_2', name: 'CAPRICOAST MATTE', slideIndices: [10, 11, 12] },
-    { id: 'var_3', name: 'CAPRICOST GLOSSY', slideIndices: [13, 14, 15] },
+    { id: 'var_3', name: 'CAPRICOAST GLOSSY', slideIndices: [13, 14, 15] },
     { id: 'var_4', name: 'ELEGANT SURABHI', slideIndices: [16, 17, 18] },
     { id: 'var_5', name: '4X TUFF GLOSS', slideIndices: [19, 20, 21] }
   ];

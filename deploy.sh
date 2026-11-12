@@ -36,6 +36,8 @@ if [ -f "$LOCAL_STORE" ]; then
     echo "💾 Creating automatic safety backup: $BACKUP_DIR/local_store_backup_${TIMESTAMP}.json"
     cp -f "$LOCAL_STORE" "$BACKUP_DIR/local_store_backup_${TIMESTAMP}.json"
     cp -f "$LOCAL_STORE" "$PRESERVE_FILE"
+    # Temporarily discard git tracking diff for local_store.json so git pull succeeds cleanly
+    git checkout -- "$LOCAL_STORE" 2>/dev/null || true
 fi
 
 # Fetch and merge updates safely
